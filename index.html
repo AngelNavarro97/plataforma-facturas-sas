@@ -555,6 +555,7 @@
   .chart-card.tall .chart-wrap { height: 320px; }
   .stat-card.violet .stat-value { color: #c4b5fd; }
   .stat-card.amount .stat-value { color: #34d399; font-size: 1.65rem; }
+  .stat-card.pending .stat-value { color: var(--warning); }
 
   .stats-table-card {
     background: var(--surface); border: 1px solid var(--border);
@@ -811,11 +812,16 @@
     </div>
 
     <!-- KPIs -->
-    <div class="grid-stats" style="grid-template-columns: repeat(2, 1fr);">
+    <div class="grid-stats" style="grid-template-columns: repeat(3, 1fr);">
       <div class="stat-card">
         <div class="stat-label">Total facturas</div>
         <div class="stat-value" id="kpiTotal">0</div>
-        <div class="stat-meta" id="kpiTotalMeta">— por facturar</div>
+        <div class="stat-meta">en el sistema</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-label">Por facturar</div>
+        <div class="stat-value" id="kpiPending">0</div>
+        <div class="stat-meta" id="kpiPendingMeta">facturas pendientes</div>
       </div>
       <div class="stat-card amount">
         <div class="stat-label">Importe total por facturar</div>
@@ -1889,15 +1895,16 @@
     const importePorFacturar = pendientes.reduce((s, f) => s + (f.importe || 0), 0);
 
     document.getElementById('kpiTotal').textContent = total;
-    document.getElementById('kpiTotalMeta').textContent =
+    document.getElementById('kpiPending').textContent = pendientes.length;
+    document.getElementById('kpiPendingMeta').textContent =
       pendientes.length === 0
-        ? 'todas facturadas 🎉'
-        : `${pendientes.length} por facturar`;
+        ? 'todo al día 🎉'
+        : pendientes.length === 1 ? 'factura pendiente' : 'facturas pendientes';
     document.getElementById('kpiAmount').textContent = formatMoney(importePorFacturar);
     document.getElementById('kpiAmountMeta').textContent =
       pendientes.length === 0
-        ? 'no hay facturas pendientes 🎉'
-        : `${pendientes.length} factura${pendientes.length === 1 ? '' : 's'} pendiente${pendientes.length === 1 ? '' : 's'}`;
+        ? 'sin pendientes'
+        : 'solo facturas pendientes';
 
     // Datos por estado
     const estados = ['Pendiente','Subida','Revisada'];

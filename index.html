@@ -8,6 +8,7 @@
 <link rel="apple-touch-icon" href="RECURSOS/logosimbolo.png">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
     --corporate-bg: #29235c;
@@ -539,6 +540,36 @@
   .hidden { display: none !important; }
   .hidden-by-role { display: none !important; }
 
+  /* ESTADÍSTICAS */
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 768px) { .stats-row { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1.25rem;
+    backdrop-filter: blur(10px);
+  }
+  .chart-card h3 { font-size: 0.95rem; font-weight: 600; color: #fff; margin-bottom: 1rem; }
+  .chart-card .chart-wrap {
+    position: relative; height: 240px;
+  }
+  .chart-card.tall .chart-wrap { height: 320px; }
+  .stat-card.violet .stat-value { color: #c4b5fd; }
+  .stat-card.amount .stat-value { color: #34d399; font-size: 1.65rem; }
+
+  .stats-table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; backdrop-filter: blur(10px);
+    margin-top: 1rem;
+  }
+  .stats-table-card h3 {
+    padding: 1rem 1.25rem; margin: 0;
+    font-size: 0.95rem; font-weight: 600; color: #fff;
+    border-bottom: 1px solid var(--border);
+  }
+  .stats-table-card table th { padding: 0.7rem 1rem; }
+  .stats-table-card table tbody tr { cursor: default; }
+  .stats-table-card table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
   /* Placeholder para supervisor cuando no hay archivo subido */
   .readonly-placeholder {
     border: 2px dashed rgba(255,255,255,0.15);
@@ -640,6 +671,7 @@
   <div class="nav-links">
     <button class="nav-link" id="navDashboard" onclick="goto('dashboard')">Panel</button>
     <button class="nav-link" id="navFacturas" onclick="goto('facturas')">Facturas</button>
+    <button class="nav-link no-jefe" id="navEstadisticas" onclick="goto('estadisticas')">Estadísticas</button>
     <div class="user-pill">
       <div class="user-info">
         <div class="user-name" id="userName">—</div>
@@ -769,6 +801,75 @@
     <div id="facturasList"></div>
   </section>
 
+  <!-- ESTADÍSTICAS -->
+  <section id="screen-estadisticas" class="container hidden">
+    <div class="toolbar">
+      <div>
+        <h1>Estadísticas</h1>
+        <p>Análisis general de las facturas</p>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="grid-stats">
+      <div class="stat-card">
+        <div class="stat-label">Total facturas</div>
+        <div class="stat-value" id="kpiTotal">0</div>
+        <div class="stat-meta">en el sistema</div>
+      </div>
+      <div class="stat-card amount">
+        <div class="stat-label">Importe total</div>
+        <div class="stat-value" id="kpiAmount">0,00 €</div>
+        <div class="stat-meta">suma acumulada</div>
+      </div>
+      <div class="stat-card amount">
+        <div class="stat-label">Importe medio</div>
+        <div class="stat-value" id="kpiAvg">0,00 €</div>
+        <div class="stat-meta">por factura</div>
+      </div>
+    </div>
+
+    <!-- Gráficos circulares -->
+    <div class="stats-row">
+      <div class="chart-card">
+        <h3>Por estado</h3>
+        <div class="chart-wrap"><canvas id="chartEstado"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Por forma de pago</h3>
+        <div class="chart-wrap"><canvas id="chartPago"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Gráfico de barras por mes -->
+    <div class="chart-card tall" style="margin-bottom: 1rem;">
+      <h3>Evolución mensual (importe en €, apilado por estado)</h3>
+      <div class="chart-wrap"><canvas id="chartMeses"></canvas></div>
+    </div>
+
+    <!-- Tabla detallada por mes -->
+    <div class="stats-table-card">
+      <h3>Desglose mensual</h3>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Período</th>
+              <th style="text-align:center;">Total</th>
+              <th style="text-align:right;">Importe (€)</th>
+              <th style="text-align:center;">Pendientes</th>
+              <th style="text-align:center;">Subidas</th>
+              <th style="text-align:center;">Revisadas</th>
+              <th style="text-align:center;">Cta. Cte.</th>
+              <th style="text-align:center;">Tarjeta</th>
+            </tr>
+          </thead>
+          <tbody id="statsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   <!-- DETALLE -->
   <section id="screen-detalle" class="container hidden" style="max-width: 900px;">
     <div id="saveBar" class="save-bar hidden">
@@ -850,6 +951,23 @@
   </section>
 
 </main>
+
+<!-- MODAL DE CONFIRMACIÓN (genérico) -->
+<div id="modalConfirm" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3 id="confirmTitle">¿Estás seguro?</h3>
+      <button class="modal-close" onclick="closeConfirm(false)">✕</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirmMessage" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; margin-bottom: 1.25rem;">¿Confirmas la acción?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" style="margin-top:0;" onclick="closeConfirm(false)">Cancelar</button>
+        <button type="button" class="btn" id="confirmYesBtn" style="background: rgba(239,68,68,0.4); border-color: rgba(239,68,68,0.7); box-shadow: 0 4px 15px rgba(239,68,68,0.25);" onclick="closeConfirm(true)">Eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- MODAL NUEVA FACTURA -->
 <div id="modalNueva" class="modal-overlay hidden">
@@ -1096,6 +1214,12 @@
       else el.classList.add('hidden-by-role');
     });
 
+    // Ocultar elementos para Dani (jefe). Las estadísticas no son útiles para él.
+    document.querySelectorAll('.no-jefe').forEach(el => {
+      if (currentProfile.rol === 'jefe') el.classList.add('hidden-by-role');
+      else el.classList.remove('hidden-by-role');
+    });
+
     document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
 
     if (currentProfile.rol === 'admin') {
@@ -1207,7 +1331,7 @@
   // NAVEGACIÓN
   // ============================================================
   function goto(screen) {
-    ['login','dashboard','facturas','detalle'].forEach(s => {
+    ['login','dashboard','facturas','detalle','estadisticas'].forEach(s => {
       document.getElementById('screen-' + s).classList.add('hidden');
     });
     if (screen === 'login') {
@@ -1218,10 +1342,12 @@
     document.getElementById('screen-' + screen).classList.remove('hidden');
     document.getElementById('navDashboard').classList.toggle('active', screen === 'dashboard');
     document.getElementById('navFacturas').classList.toggle('active', screen === 'facturas' || screen === 'detalle');
+    document.getElementById('navEstadisticas').classList.toggle('active', screen === 'estadisticas');
 
-    if (screen === 'dashboard') renderDashboard();
-    if (screen === 'facturas')  renderFacturas();
-    if (screen === 'detalle')   openDetalleScreen();
+    if (screen === 'dashboard')    renderDashboard();
+    if (screen === 'facturas')     renderFacturas();
+    if (screen === 'detalle')      openDetalleScreen();
+    if (screen === 'estadisticas') renderEstadisticas();
 
     window.scrollTo(0, 0);
   }
@@ -1515,7 +1641,12 @@
     if (!currentFacturaId) return;
     const f = getCurrentFactura();
     if (!f) return;
-    if (!confirm(`¿Seguro que quieres eliminar "${f.concepto}"? No se podrá deshacer.`)) return;
+    const ok = await showConfirm({
+      title: 'Eliminar factura',
+      message: `Vas a eliminar "${f.concepto}". Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar factura'
+    });
+    if (!ok) return;
 
     if (f.archivoPath) {
       await sb.storage.from('facturas').remove([f.archivoPath]);
@@ -1622,14 +1753,42 @@
 
   async function deleteComment(commentId) {
     if (!commentId) return;
-    if (!confirm('¿Eliminar este comentario? No se puede deshacer.')) return;
+    const ok = await showConfirm({
+      title: 'Eliminar comentario',
+      message: '¿Seguro que quieres eliminar este comentario? Esta acción no se puede deshacer.',
+      confirmText: 'Eliminar'
+    });
+    if (!ok) return;
     const { error } = await sb.from('comentarios').delete().eq('id', commentId);
     if (error) {
       showToast('Error al eliminar: ' + error.message, 'error');
       return;
     }
+    // Refrescar inmediatamente para el que borra (Realtime también lo hará para el resto)
+    await loadComentarios(currentFacturaId);
     showToast('Comentario eliminado');
-    // Realtime refresca el chat solo
+  }
+
+  // ============================================================
+  // MODAL DE CONFIRMACIÓN
+  // ============================================================
+  let _confirmCallback = null;
+  function showConfirm(options = {}) {
+    return new Promise((resolve) => {
+      document.getElementById('confirmTitle').textContent = options.title || '¿Estás seguro?';
+      document.getElementById('confirmMessage').textContent = options.message || '¿Confirmas la acción?';
+      document.getElementById('confirmYesBtn').textContent = options.confirmText || 'Confirmar';
+      document.getElementById('modalConfirm').classList.remove('hidden');
+      _confirmCallback = resolve;
+    });
+  }
+  function closeConfirm(value) {
+    document.getElementById('modalConfirm').classList.add('hidden');
+    if (_confirmCallback) {
+      const cb = _confirmCallback;
+      _confirmCallback = null;
+      cb(value);
+    }
   }
 
   // ============================================================
@@ -1721,6 +1880,155 @@
       btn.disabled = false;
       btn.textContent = 'Guardar factura';
     }
+  }
+
+  // ============================================================
+  // ESTADÍSTICAS
+  // ============================================================
+  let _chartEstado = null, _chartPago = null, _chartMeses = null;
+
+  function renderEstadisticas() {
+    if (!facturas) return;
+    const total = facturas.length;
+    const totalImporte = facturas.reduce((s, f) => s + (f.importe || 0), 0);
+    const avgImporte = total ? (totalImporte / total) : 0;
+
+    document.getElementById('kpiTotal').textContent = total;
+    document.getElementById('kpiAmount').textContent = formatMoney(totalImporte);
+    document.getElementById('kpiAvg').textContent    = formatMoney(avgImporte);
+
+    // Datos por estado
+    const estados = ['Pendiente','Subida','Revisada'];
+    const colores = {
+      Pendiente: '#fcd34d',
+      Subida:    '#35a8e0',
+      Revisada:  '#34d399'
+    };
+    const dataEstado = estados.map(e => facturas.filter(f => f.estado === e).length);
+
+    // Datos por forma de pago
+    const cc = facturas.filter(f => f.formaPago === 'cuenta_corriente').length;
+    const tj = facturas.filter(f => f.formaPago === 'tarjeta').length;
+
+    // Datos por mes (último año)
+    const groups = {};
+    facturas.forEach(f => {
+      const key = `${f.año}-${MESES.indexOf(f.mes)}`;
+      if (!groups[key]) groups[key] = { año: f.año, mes: f.mes, mesIdx: MESES.indexOf(f.mes), facturas: [] };
+      groups[key].facturas.push(f);
+    });
+    const sortedAsc = Object.entries(groups).sort((a, b) => {
+      const [aY, aM] = a[0].split('-').map(Number);
+      const [bY, bM] = b[0].split('-').map(Number);
+      if (aY !== bY) return aY - bY;
+      return aM - bM;
+    });
+
+    const labels = sortedAsc.map(([_, g]) => `${g.mes.slice(0,3)} ${g.año}`);
+    const datasetPend = sortedAsc.map(([_, g]) => g.facturas.filter(f => f.estado === 'Pendiente').reduce((s,f) => s + f.importe, 0));
+    const datasetSub  = sortedAsc.map(([_, g]) => g.facturas.filter(f => f.estado === 'Subida').reduce((s,f) => s + f.importe, 0));
+    const datasetRev  = sortedAsc.map(([_, g]) => g.facturas.filter(f => f.estado === 'Revisada').reduce((s,f) => s + f.importe, 0));
+
+    // Tabla detallada (orden descendente)
+    const sortedDesc = [...sortedAsc].reverse();
+    const tbody = document.getElementById('statsTableBody');
+    if (sortedDesc.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Sin datos todavía.</td></tr>';
+    } else {
+      tbody.innerHTML = sortedDesc.map(([_, g]) => {
+        const tot = g.facturas.length;
+        const imp = g.facturas.reduce((s,f) => s + f.importe, 0);
+        const p = g.facturas.filter(f => f.estado === 'Pendiente').length;
+        const s = g.facturas.filter(f => f.estado === 'Subida').length;
+        const r = g.facturas.filter(f => f.estado === 'Revisada').length;
+        const c = g.facturas.filter(f => f.formaPago === 'cuenta_corriente').length;
+        const t = g.facturas.filter(f => f.formaPago === 'tarjeta').length;
+        return `
+          <tr>
+            <td><strong>${g.mes} ${g.año}</strong></td>
+            <td style="text-align:center;">${tot}</td>
+            <td style="text-align:right; font-weight:700; color:#34d399;">${formatMoney(imp)}</td>
+            <td style="text-align:center; color:${p > 0 ? 'var(--warning)' : 'var(--text-muted)'};">${p}</td>
+            <td style="text-align:center; color:${s > 0 ? 'var(--btn-color)' : 'var(--text-muted)'};">${s}</td>
+            <td style="text-align:center; color:${r > 0 ? '#34d399' : 'var(--text-muted)'};">${r}</td>
+            <td style="text-align:center; color: var(--text-muted);">${c}</td>
+            <td style="text-align:center; color: var(--text-muted);">${t}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render charts (esperar al siguiente tick para que los canvas estén visibles)
+    requestAnimationFrame(() => {
+      const commonOpts = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#fff', font: { size: 12 }, boxWidth: 12, padding: 12 }
+          }
+        }
+      };
+
+      // Donut por estado
+      if (_chartEstado) _chartEstado.destroy();
+      _chartEstado = new Chart(document.getElementById('chartEstado'), {
+        type: 'doughnut',
+        data: {
+          labels: estados,
+          datasets: [{
+            data: dataEstado,
+            backgroundColor: estados.map(e => colores[e]),
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 2
+          }]
+        },
+        options: { ...commonOpts, cutout: '60%' }
+      });
+
+      // Donut por forma de pago
+      if (_chartPago) _chartPago.destroy();
+      _chartPago = new Chart(document.getElementById('chartPago'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Cuenta corriente','Tarjeta'],
+          datasets: [{
+            data: [cc, tj],
+            backgroundColor: ['#35a8e0', '#c4b5fd'],
+            borderColor: 'rgba(255,255,255,0.1)',
+            borderWidth: 2
+          }]
+        },
+        options: { ...commonOpts, cutout: '60%' }
+      });
+
+      // Barras apiladas por mes
+      if (_chartMeses) _chartMeses.destroy();
+      _chartMeses = new Chart(document.getElementById('chartMeses'), {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Pendiente', data: datasetPend, backgroundColor: colores.Pendiente, borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 },
+            { label: 'Subida',    data: datasetSub,  backgroundColor: colores.Subida,    borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 },
+            { label: 'Revisada',  data: datasetRev,  backgroundColor: colores.Revisada,  borderColor: 'rgba(255,255,255,0.1)', borderWidth: 1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#fff', boxWidth: 12, padding: 12 } },
+            tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${formatMoney(ctx.parsed.y)}` } }
+          },
+          scales: {
+            x: { stacked: true, ticks: { color: '#d1d5db' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { stacked: true, ticks: { color: '#d1d5db', callback: (v) => v + ' €' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+          }
+        }
+      });
+    });
   }
 
   // ============================================================

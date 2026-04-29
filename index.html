@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plataforma de Facturas — SAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --corporate-bg: #29235c;
+    --btn-color: #35a8e0;
+    --btn-hover: #2b8cb8;
+    --bg-color: #29235c;
+    --surface: rgba(255, 255, 255, 0.05);
+    --text-main: #ffffff;
+    --text-muted: #d1d5db;
+    --border: rgba(255, 255, 255, 0.2);
+    --success: #10b981;
+    --error: #ef4444;
+    --warning: #fcd34d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  header {
+    background-color: var(--corporate-bg);
+    padding: 1.25rem 2rem;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  header .brand { display: flex; align-items: center; gap: 1.25rem; }
+  header img.logo { height: 44px; width: auto; }
+  header .logo-fallback {
+    height: 44px; padding: 0 0.9rem;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; letter-spacing: 1px; color: #fff;
+  }
+  header h1 { color: #fff; font-size: 1.15rem; font-weight: 600; }
+  .nav-links { display: flex; gap: 1rem; align-items: center; }
+  .nav-link {
+    color: var(--text-muted); background: transparent;
+    border: none; font-family: inherit;
+    font-size: 0.95rem; font-weight: 500;
+    padding: 0.4rem 0.8rem; border-radius: 6px;
+    cursor: pointer; transition: color .15s, background .15s;
+  }
+  .nav-link:hover { color: #fff; background: rgba(255,255,255,0.05); }
+  .nav-link.active { color: #fff; background: rgba(53,168,224,0.15); }
+  .user-pill { display: flex; align-items: center; gap: 0.7rem; }
+  .user-info { text-align: right; }
+  .user-name { font-size: 0.9rem; font-weight: 600; color: #fff; line-height: 1.1; }
+  .user-role { font-size: 0.75rem; color: var(--text-muted); }
+  .user-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(53,168,224,0.25);
+    border: 2px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; color: #fff;
+    position: relative; overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  .user-avatar img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .user-avatar .avatar-initial {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%;
+  }
+
+  /* MAIN */
+  .main-content {
+    flex: 1; padding: 2.5rem 1rem 4rem 1rem;
+    display: flex; justify-content: center; align-items: flex-start;
+  }
+  .container { width: 100%; max-width: 1200px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 2.5rem; width: 100%;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  }
+  .card-header { text-align: center; margin-bottom: 2rem; }
+  .card-header h2 { color: #fff; font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .card-header p { color: var(--text-muted); font-size: 0.95rem; }
+  .login-logo-wrap { text-align: center; margin-bottom: 1.25rem; }
+  .login-logo-wrap img { height: 64px; width: auto; }
+
+  /* FORMS */
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label {
+    display: block; margin-bottom: 0.5rem;
+    font-size: 0.875rem; font-weight: 600; color: #fff;
+  }
+  .form-control {
+    width: 100%;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem 1rem; color: var(--text-main);
+    font-family: inherit; font-size: 0.95rem;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  .form-control::placeholder { color: rgba(255,255,255,0.4); }
+  .form-control:focus {
+    outline: none; border-color: var(--btn-color);
+    box-shadow: 0 0 0 3px rgba(53,168,224,0.25);
+    background: rgba(255,255,255,0.12);
+  }
+  select.form-control { cursor: pointer; }
+  select.form-control option { background-color: var(--bg-color); color: #fff; }
+  input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+  textarea.form-control { resize: vertical; min-height: 80px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+  /* CHECKBOX */
+  .checkbox-group {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin: 0.25rem 0 1.25rem;
+    cursor: pointer; user-select: none;
+  }
+  .checkbox-group input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    width: 22px; height: 22px;
+    background-color: #ffffff;
+    border: 2px solid var(--border); border-radius: 4px;
+    cursor: pointer; flex-shrink: 0;
+    display: inline-flex; justify-content: center; align-items: center;
+    transition: border-color .15s;
+  }
+  .checkbox-group input[type="checkbox"]:checked { border-color: var(--success); }
+  .checkbox-group input[type="checkbox"]:checked::after {
+    content: '✓'; color: var(--success); font-size: 16px; font-weight: 800;
+  }
+  .checkbox-group label { margin: 0; font-weight: 500; color: #fff; cursor: pointer; font-size: 0.9rem; }
+
+  /* BTN PRINCIPAL */
+  .btn {
+    width: 100%;
+    background: rgba(53,168,224,0.3);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    color: #fff;
+    border: 1px solid rgba(53,168,224,0.6);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px;
+    cursor: pointer; font-family: inherit;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 15px rgba(53,168,224,0.2);
+    position: relative; overflow: hidden;
+  }
+  .btn::before {
+    content: ''; position: absolute;
+    top: 0; left: -100%; width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+    transform: skewX(-20deg); transition: 0.5s;
+  }
+  .btn:hover::before { left: 150%; }
+  .btn:hover {
+    background: rgba(53,168,224,0.5);
+    border-color: rgba(255,255,255,0.7);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(53,168,224,0.4);
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn:disabled::before { display: none; }
+  .btn-secondary {
+    background: transparent; color: #fff; border: 1px solid var(--border);
+    margin-top: 0.75rem; box-shadow: none; backdrop-filter: none;
+    font-weight: 500; letter-spacing: normal;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); transform: none; box-shadow: none; }
+  .btn-secondary::before { display: none; }
+  .btn-danger {
+    background: rgba(239,68,68,0.3); border: 1px solid rgba(239,68,68,0.6);
+    width: auto; padding: 0.4rem 0.8rem;
+    font-size: 0.85rem; font-weight: 600; letter-spacing: normal;
+    box-shadow: none; border-radius: 8px;
+  }
+  .btn-danger:hover {
+    background: rgba(239,68,68,0.5);
+    border-color: rgba(255,255,255,0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(239,68,68,0.3);
+  }
+  .btn-danger::before { display: none; }
+  .btn-success {
+    background: rgba(16,185,129,0.3); border: 1px solid rgba(16,185,129,0.6);
+    box-shadow: 0 4px 15px rgba(16,185,129,0.2);
+  }
+  .btn-success:hover {
+    background: rgba(16,185,129,0.5);
+    border-color: rgba(255,255,255,0.7);
+    box-shadow: 0 8px 25px rgba(16,185,129,0.4);
+  }
+  .btn-inline { width: auto; padding: 0.55rem 1rem; font-size: 0.9rem; }
+
+  /* MENSAJES */
+  .alert { padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500; }
+  .alert-error { background: rgba(239,68,68,0.15); border: 1px solid var(--error); color: #f87171; }
+  .toast {
+    position: fixed; top: 20px; right: 20px; z-index: 200;
+    padding: 0.85rem 1.2rem; border-radius: 10px; font-weight: 500;
+    background: rgba(16,185,129,0.95); color: #fff;
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    max-width: 320px; animation: slideIn .3s ease-out;
+  }
+  .toast.error { background: rgba(239,68,68,0.95); }
+  .toast.info { background: rgba(53,168,224,0.95); }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+  .loading-screen {
+    position: fixed; inset: 0;
+    background: var(--corporate-bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+    flex-direction: column; gap: 1rem;
+    color: var(--text-muted);
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.2);
+    border-top-color: var(--btn-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* DASHBOARD */
+  .grid-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  @media (max-width: 700px) { .grid-stats { grid-template-columns: 1fr; } }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.5rem; cursor: pointer; transition: all 0.25s; text-align: left;
+    color: #fff; font-family: inherit; backdrop-filter: blur(10px);
+  }
+  .stat-card:hover { transform: translateY(-3px); border-color: rgba(53,168,224,0.5); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+  .stat-card .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; }
+  .stat-card .stat-value { font-size: 2.25rem; font-weight: 700; line-height: 1; }
+  .stat-card .stat-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; }
+  .stat-card.pendiente .stat-value { color: var(--warning); }
+  .stat-card.subida .stat-value { color: var(--btn-color); }
+  .stat-card.revisada .stat-value { color: #34d399; }
+
+  /* HERO PARA DANI */
+  .hero-jefe {
+    background: linear-gradient(135deg, rgba(53,168,224,0.25), rgba(53,168,224,0.05));
+    border: 1px solid rgba(53,168,224,0.4);
+    border-radius: 16px; padding: 2rem; margin-bottom: 2rem;
+    display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+    box-shadow: 0 8px 25px rgba(53,168,224,0.15); backdrop-filter: blur(12px);
+  }
+  .hero-jefe .icon-circle {
+    width: 56px; height: 56px;
+    background: rgba(53,168,224,0.4); border: 1px solid rgba(53,168,224,0.7);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; flex-shrink: 0;
+  }
+  .hero-jefe .hero-text { flex: 1; min-width: 220px; }
+  .hero-jefe h2 { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 0.3rem; }
+  .hero-jefe p { color: var(--text-muted); font-size: 0.9rem; }
+
+  /* TABLAS */
+  .table-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; backdrop-filter: blur(10px);
+  }
+  .table-card-header {
+    padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .table-card-header h3 { font-size: 1rem; font-weight: 600; }
+  .table-card-header a { color: var(--btn-color); text-decoration: none; font-size: 0.875rem; }
+  .table-card-header a:hover { color: var(--btn-hover); }
+  .filters-bar {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem; margin-bottom: 1rem;
+    display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+    backdrop-filter: blur(10px);
+  }
+  .filter-group {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.06);
+    padding: 0.4rem 0.8rem; border-radius: 8px; border: 1px solid var(--border);
+  }
+  .filter-group label { font-size: 0.85rem; font-weight: 600; color: #fff; }
+  .filter-group select {
+    border: none; background: transparent;
+    color: #fff; font-weight: 500; outline: none; cursor: pointer;
+    font-family: inherit; font-size: 0.9rem;
+  }
+  .filter-group select option { background-color: var(--bg-color); color: #fff; }
+  .table-responsive { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid var(--border); color: #fff; vertical-align: middle; }
+  th {
+    background-color: rgba(255,255,255,0.06); color: #fff; font-weight: 600;
+    white-space: nowrap; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  tbody tr { transition: background .15s; cursor: pointer; }
+  tbody tr:hover { background: rgba(255,255,255,0.04); }
+
+  /* STATUS BADGES Y CHIPS */
+  .status-badge, .summary-chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.3rem 0.7rem; border-radius: 999px;
+    font-size: 0.75rem; font-weight: 600;
+    border: 1px solid; white-space: nowrap;
+  }
+  .status-badge .dot, .summary-chip .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .status-pendiente { color: var(--warning); border-color: rgba(252,211,77,0.5); background: rgba(252,211,77,0.1); }
+  .status-pendiente .dot { background: var(--warning); }
+  .status-subida { color: var(--btn-color); border-color: rgba(53,168,224,0.5); background: rgba(53,168,224,0.1); }
+  .status-subida .dot { background: var(--btn-color); }
+  .status-revisada { color: #34d399; border-color: rgba(52,211,153,0.5); background: rgba(52,211,153,0.1); }
+  .status-revisada .dot { background: #34d399; }
+
+  /* MONTH BLOCKS */
+  .month-block {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 0.75rem;
+    overflow: hidden; backdrop-filter: blur(10px);
+    transition: border-color .15s;
+  }
+  .month-block:hover { border-color: rgba(255,255,255,0.3); }
+  .month-block-header {
+    padding: 1rem 1.25rem;
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer; gap: 1rem; flex-wrap: wrap;
+    transition: background .15s;
+    user-select: none;
+  }
+  .month-block-header:hover { background: rgba(255,255,255,0.03); }
+  .month-block-title {
+    display: flex; align-items: center; gap: 0.7rem;
+    font-size: 1.05rem; font-weight: 700; color: #fff;
+  }
+  .month-block-title .meta { color: var(--text-muted); font-weight: 400; font-size: 0.85rem; }
+  .month-block-summary {
+    display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;
+  }
+  .month-block-body { display: none; border-top: 1px solid var(--border); }
+  .month-block.expanded .month-block-body { display: block; }
+  .chevron {
+    display: inline-block; transition: transform .25s;
+    color: var(--btn-color); font-size: 0.9rem;
+  }
+  .month-block.expanded .chevron { transform: rotate(180deg); }
+
+  /* DETALLE */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    color: var(--text-muted); font-size: 0.9rem;
+    background: none; border: none; cursor: pointer;
+    margin-bottom: 1rem; font-family: inherit; transition: color .15s;
+  }
+  .back-link:hover { color: #fff; }
+  .detail-section { margin-top: 1.5rem; }
+  .detail-section h3 { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 0.75rem; }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem; padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .info-item .info-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 0.25rem; }
+  .info-item .info-value { font-size: 0.95rem; font-weight: 600; color: #fff; }
+
+  /* SAVE BAR */
+  .save-bar {
+    position: sticky; top: 1rem; z-index: 50;
+    background: linear-gradient(135deg, rgba(53,168,224,0.3), rgba(53,168,224,0.15));
+    border: 1px solid rgba(53,168,224,0.6);
+    border-radius: 12px; padding: 0.85rem 1.25rem; margin-bottom: 1rem;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem; flex-wrap: wrap;
+    backdrop-filter: blur(15px);
+    box-shadow: 0 8px 25px rgba(53,168,224,0.25);
+    animation: slideDown .3s ease-out;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  .save-bar .save-msg { color: #fff; font-size: 0.9rem; }
+  .save-bar .save-msg .save-sub { color: var(--text-muted); margin-left: 0.4rem; font-weight: 400; }
+  .save-bar .btn { width: auto; padding: 0.6rem 1.5rem; font-size: 0.95rem; }
+
+  .upload-zone {
+    border: 2px dashed rgba(255,255,255,0.25); border-radius: 12px;
+    padding: 2.5rem 1.5rem; text-align: center;
+    background: rgba(255,255,255,0.03); cursor: pointer; transition: all 0.2s;
+  }
+  .upload-zone:hover { border-color: var(--btn-color); background: rgba(53,168,224,0.05); }
+  .upload-zone .upload-icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6; }
+  .upload-zone .upload-title { font-weight: 600; color: #fff; margin-bottom: 0.25rem; }
+  .upload-zone .upload-hint { font-size: 0.8rem; color: var(--text-muted); }
+  .file-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem; gap: 1rem; flex-wrap: wrap;
+  }
+  .file-row .file-info { display: flex; align-items: center; gap: 0.75rem; }
+  .file-row .file-icon {
+    width: 44px; height: 44px;
+    background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.5);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    color: #f87171; font-weight: 700; font-size: 0.7rem;
+  }
+  .file-row .file-name { font-weight: 600; color: #fff; word-break: break-all; }
+  .file-row .file-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+  /* CHAT */
+  .chat-list {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    margin-bottom: 1rem; padding: 0.75rem 0.25rem;
+    max-height: 380px; overflow-y: auto;
+  }
+  .chat-list::-webkit-scrollbar { width: 6px; }
+  .chat-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+  .chat-msg { display: flex; gap: 0.5rem; align-items: flex-end; }
+  .chat-msg.mine { flex-direction: row-reverse; }
+  .chat-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.8rem; color: #fff; flex-shrink: 0;
+    position: relative; overflow: hidden;
+  }
+  .chat-avatar img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .chat-avatar .chat-avatar-initial {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%;
+  }
+  .chat-msg.theirs .chat-avatar { background: rgba(53,168,224,0.3); border-color: rgba(53,168,224,0.6); }
+  .chat-msg.mine   .chat-avatar { background: rgba(255,255,255,0.18); }
+  .chat-bubble {
+    max-width: 75%; padding: 0.6rem 0.9rem; border-radius: 14px;
+    background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+  }
+  .chat-msg.theirs .chat-bubble { border-bottom-left-radius: 4px; }
+  .chat-msg.mine   .chat-bubble { background: rgba(53,168,224,0.3); border-color: rgba(53,168,224,0.5); border-bottom-right-radius: 4px; }
+  .chat-meta { display: flex; justify-content: space-between; gap: 0.7rem; margin-bottom: 0.2rem; }
+  .chat-author { font-size: 0.8rem; font-weight: 600; color: #fff; }
+  .chat-time { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
+  .chat-text { font-size: 0.9rem; color: #fff; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+  .chat-empty { text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 1.5rem 0.5rem; }
+  .chat-input-row { display: flex; gap: 0.5rem; align-items: stretch; }
+  .chat-input-row .form-control { flex: 1; }
+  .chat-input-row .btn { width: auto; padding: 0.55rem 1.1rem; font-size: 0.9rem; }
+
+  .history-list { list-style: none; }
+  .history-list li {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.5rem 0; font-size: 0.85rem; color: var(--text-muted);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .history-list li:last-child { border-bottom: none; }
+  .history-list .h-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--btn-color); }
+  .history-list .h-actor { font-weight: 600; color: #fff; }
+  .history-list .h-time { margin-left: auto; font-size: 0.75rem; color: var(--text-muted); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,10,40,0.6);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 1rem;
+  }
+  .modal {
+    background: rgba(41,35,92,0.95);
+    border: 1px solid var(--border);
+    border-radius: 16px; width: 100%; max-width: 520px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    backdrop-filter: blur(20px);
+    max-height: 92vh; overflow-y: auto;
+  }
+  .modal-header {
+    padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h3 { font-size: 1.1rem; font-weight: 600; color: #fff; }
+  .modal-close {
+    background: transparent; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 1.4rem; line-height: 1;
+    padding: 0.2rem 0.5rem; border-radius: 6px;
+    transition: color .15s, background .15s;
+  }
+  .modal-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+  .modal-body { padding: 1.5rem; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; padding-top: 0.5rem; }
+  .modal-actions .btn { width: auto; padding: 0.6rem 1.2rem; font-size: 0.95rem; }
+
+  .hidden { display: none !important; }
+  .admin-only.hidden-by-role { display: none !important; }
+  .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap; gap: 1rem;
+  }
+  .toolbar h1 { font-size: 1.5rem; font-weight: 700; }
+  .toolbar p { color: var(--text-muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<!-- Pantalla de carga inicial mientras comprobamos la sesión -->
+<div id="loadingScreen" class="loading-screen">
+  <div class="spinner"></div>
+  <div>Cargando…</div>
+</div>
+
+<!-- HEADER -->
+<header id="appHeader" class="hidden">
+  <div class="brand">
+    <img class="logo" src="RECURSOS/Logo Blanco.png" alt="SAS"
+         onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='inline-flex';">
+    <span id="logoFallback" class="logo-fallback" style="display:none;">SAS</span>
+    <h1>Plataforma de Facturas</h1>
+  </div>
+  <div class="nav-links">
+    <button class="nav-link" id="navDashboard" onclick="goto('dashboard')">Panel</button>
+    <button class="nav-link" id="navFacturas" onclick="goto('facturas')">Facturas</button>
+    <div class="user-pill">
+      <div class="user-info">
+        <div class="user-name" id="userName">—</div>
+        <div class="user-role" id="userRole">—</div>
+      </div>
+      <div class="user-avatar" id="userAvatar">
+        <img id="userAvatarImg" alt=""
+             onload="this.style.display='block'; document.getElementById('userAvatarInitial').style.display='none';"
+             onerror="this.style.display='none'; document.getElementById('userAvatarInitial').style.display='flex';">
+        <span class="avatar-initial" id="userAvatarInitial">·</span>
+      </div>
+      <button class="nav-link" onclick="logout()">Salir</button>
+    </div>
+  </div>
+</header>
+
+<main class="main-content">
+
+  <!-- LOGIN -->
+  <section id="screen-login" class="card hidden" style="max-width: 460px;">
+    <div class="login-logo-wrap">
+      <img src="RECURSOS/Logo Blanco.png" alt="SAS"
+           onerror="this.style.display='none'; document.getElementById('loginLogoFallback').style.display='inline-flex';">
+      <span id="loginLogoFallback" class="logo-fallback" style="display:none; height:64px;">SAS</span>
+    </div>
+    <div class="card-header">
+      <h2>Plataforma de Facturas</h2>
+      <p>Identifícate para acceder</p>
+    </div>
+    <div id="loginError" class="alert alert-error hidden">Email o contraseña incorrectos.</div>
+    <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
+      <div class="form-group">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" class="form-control" placeholder="tu@smartalignerservices.com" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPass">Contraseña</label>
+        <input type="password" id="loginPass" class="form-control" placeholder="••••••••" required>
+      </div>
+      <div class="checkbox-group">
+        <input type="checkbox" id="rememberMe" checked>
+        <label for="rememberMe">Recordarme durante 30 días</label>
+      </div>
+      <button type="submit" class="btn" id="btnLogin">Ingresar</button>
+    </form>
+    <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px solid var(--border); font-size:0.75rem; color:var(--text-muted); text-align:center;">
+      Solo personal autorizado · Smart Aligner Services
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="screen-dashboard" class="container hidden">
+    <div id="heroJefe" class="hero-jefe hidden">
+      <div class="icon-circle">📤</div>
+      <div class="hero-text">
+        <h2>Tienes <span id="heroPendCount">0</span> facturas pendientes de subir</h2>
+        <p>Pulsa una factura de la lista para adjuntar el PDF o la imagen correspondiente.</p>
+      </div>
+      <button class="btn btn-inline" onclick="goto('facturas')" style="margin-top:0;">Ver pendientes →</button>
+    </div>
+    <div class="toolbar">
+      <div>
+        <h1 id="dashTitle">—</h1>
+        <p id="dashSubtitle">Resumen del estado de las facturas</p>
+      </div>
+    </div>
+    <div class="grid-stats">
+      <button class="stat-card pendiente" onclick="filterTo('Pendiente')">
+        <div class="stat-label">Pendientes</div>
+        <div class="stat-value" id="statPend">0</div>
+        <div class="stat-meta">esperando archivo</div>
+      </button>
+      <button class="stat-card subida" onclick="filterTo('Subida')">
+        <div class="stat-label">Subidas</div>
+        <div class="stat-value" id="statSub">0</div>
+        <div class="stat-meta">pendientes de revisar</div>
+      </button>
+      <button class="stat-card revisada" onclick="filterTo('Revisada')">
+        <div class="stat-label">Revisadas</div>
+        <div class="stat-value" id="statRev">0</div>
+        <div class="stat-meta">en total</div>
+      </button>
+    </div>
+    <div class="table-card">
+      <div class="table-card-header">
+        <h3>Últimas facturas pendientes</h3>
+        <a href="#" onclick="event.preventDefault(); goto('facturas');">Ver todas →</a>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <tbody id="lastPendList"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FACTURAS -->
+  <section id="screen-facturas" class="container hidden">
+    <div class="toolbar">
+      <div>
+        <h1>Facturas</h1>
+        <p id="facturasSubtitle">0 facturas en total</p>
+      </div>
+      <button class="btn btn-inline admin-only" onclick="openModal()">+ Nueva factura</button>
+    </div>
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label>Estado:</label>
+        <select id="filterEstado" onchange="renderFacturas()">
+          <option value="Todos">Todos</option>
+          <option>Pendiente</option>
+          <option>Subida</option>
+          <option>Revisada</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Forma de pago:</label>
+        <select id="filterPago" onchange="renderFacturas()">
+          <option value="Todos">Todas</option>
+          <option value="cuenta_corriente">Cuenta corriente</option>
+          <option value="tarjeta">Tarjeta</option>
+        </select>
+      </div>
+      <button class="nav-link" style="margin-left:auto;" onclick="resetFilters()">Limpiar filtros</button>
+    </div>
+    <div id="facturasList"></div>
+  </section>
+
+  <!-- DETALLE -->
+  <section id="screen-detalle" class="container hidden" style="max-width: 900px;">
+    <div id="saveBar" class="save-bar hidden">
+      <div class="save-msg">
+        <strong>Tienes cambios sin guardar.</strong>
+        <span class="save-sub">Pulsa GUARDAR para confirmar la subida.</span>
+      </div>
+      <button class="btn" id="btnGuardar" onclick="saveChanges()">GUARDAR</button>
+    </div>
+
+    <button class="back-link" onclick="goto('facturas')">← Volver al listado</button>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+        <div>
+          <span id="detailBadge" class="status-badge status-pendiente" style="margin-bottom:0.6rem;"><span class="dot"></span>Pendiente</span>
+          <h2 id="detailTitle" style="font-size:1.5rem; font-weight:700; margin-top:0.4rem;">—</h2>
+        </div>
+        <div class="admin-only" style="display:flex; gap:0.5rem;">
+          <button class="btn btn-danger" onclick="deleteFactura()">Eliminar</button>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><div class="info-label">Fecha</div><div class="info-value" id="detailFecha">—</div></div>
+        <div class="info-item"><div class="info-label">Mes</div><div class="info-value" id="detailMes">—</div></div>
+        <div class="info-item"><div class="info-label">Importe</div><div class="info-value" id="detailImporte">—</div></div>
+        <div class="info-item"><div class="info-label">Forma de pago</div><div class="info-value" id="detailFormaPago">—</div></div>
+      </div>
+    </div>
+
+    <div class="card detail-section">
+      <h3>Archivo</h3>
+      <input type="file" id="filePicker" accept=".pdf,image/*,application/pdf" style="display:none" onchange="handleFilePick(event)">
+      <div id="zoneEmpty">
+        <div class="upload-zone" onclick="document.getElementById('filePicker').click()">
+          <div class="upload-icon">📤</div>
+          <div class="upload-title">Subir archivo</div>
+          <div class="upload-hint">Haz clic para seleccionar un PDF o imagen</div>
+          <div class="upload-hint" style="margin-top:0.4rem; opacity:0.7;">PDF, JPG o PNG · máx. 10 MB</div>
+        </div>
+      </div>
+      <div id="zoneFilled" class="hidden">
+        <div class="file-row">
+          <div class="file-info">
+            <div class="file-icon">PDF</div>
+            <div>
+              <div class="file-name" id="fileName">archivo.pdf</div>
+              <div class="file-meta" id="fileMeta">—</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="viewFile()">Ver</button>
+            <button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="downloadFile()">Descargar</button>
+            <button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="document.getElementById('filePicker').click()">Reemplazar</button>
+          </div>
+        </div>
+        <button id="btnRevisar" class="btn btn-success admin-only hidden" style="margin-top:1rem;" onclick="markAsRevisada()">✓ Marcar como Revisada</button>
+      </div>
+    </div>
+
+    <div class="card detail-section">
+      <h3>Comentarios</h3>
+      <div class="chat-list" id="chatList"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" class="form-control" placeholder="Escribe un mensaje…"
+               onkeydown="if(event.key==='Enter'){event.preventDefault(); sendMessage();}">
+        <button class="btn" onclick="sendMessage()">Enviar</button>
+      </div>
+    </div>
+
+    <div class="card detail-section">
+      <h3>Historial</h3>
+      <ul class="history-list" id="historyList"></ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- MODAL NUEVA FACTURA -->
+<div id="modalNueva" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nueva factura pendiente</h3>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="newForm" onsubmit="event.preventDefault(); submitNuevaFactura();">
+        <div class="form-group">
+          <label>Fecha de la factura *</label>
+          <input type="date" id="newFecha" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Concepto *</label>
+          <input type="text" id="newConcepto" class="form-control" placeholder="Ej: Factura proveedor X" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Importe (€) *</label>
+            <input type="number" id="newImporte" step="0.01" class="form-control" placeholder="0,00" required>
+          </div>
+          <div class="form-group">
+            <label>Mes *</label>
+            <select id="newMes" class="form-control" required>
+              <option>Enero</option><option>Febrero</option><option>Marzo</option>
+              <option>Abril</option><option>Mayo</option><option>Junio</option>
+              <option>Julio</option><option>Agosto</option><option>Septiembre</option>
+              <option>Octubre</option><option>Noviembre</option><option>Diciembre</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Forma de pago *</label>
+          <select id="newPago" class="form-control" required>
+            <option value="">Selecciona…</option>
+            <option value="cuenta_corriente">Cuenta corriente</option>
+            <option value="tarjeta">Tarjeta</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Comentario inicial (opcional)</label>
+          <textarea id="newComentario" class="form-control" rows="2" placeholder="Aclaraciones para Dani…"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" style="margin-top:0;" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn" id="btnGuardarFactura">Guardar factura</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // CONFIGURACIÓN DE SUPABASE
+  // ============================================================
+  const SUPABASE_URL  = 'https://guuwulekfisvifobiocm.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1dXd1bGVrZmlzdmlmb2Jpb2NtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NDMzNzcsImV4cCI6MjA5MzAxOTM3N30.ocdzXj4Kp8ffjLIc4IYreM9m0fYNkInHceyst184QkY';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+  });
+
+  // ============================================================
+  // CONSTANTES
+  // ============================================================
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const PAGO_LABELS = { cuenta_corriente: 'Cuenta corriente', tarjeta: 'Tarjeta' };
+
+  // ============================================================
+  // ESTADO
+  // ============================================================
+  let currentSession = null;
+  let currentProfile = null;
+  let currentFacturaId = null;
+  let pendingFile = null;
+  let facturas = [];
+  let messagesByFactura = {};
+  let historialByFactura = {};
+  let realtimeChannel = null;
+  let expandedKeys = null;
+
+  // ============================================================
+  // UTILIDADES
+  // ============================================================
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('T')[0].split('-');
+    return `${d}/${m}/${y}`;
+  }
+  function formatTime(iso) {
+    if (!iso) return '';
+    const date = new Date(iso);
+    return date.toLocaleDateString('es-ES') + ' · ' + date.toTimeString().slice(0,5);
+  }
+  function formatMoney(n) {
+    return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' €';
+  }
+  function pagoLabel(key) { return PAGO_LABELS[key] || '—'; }
+  function escapeHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function pluralize(n, sing, plur) { return n === 1 ? sing : plur; }
+  function firstName(full) { return (full || '').split(' ')[0] || '—'; }
+  function avatarPathFor(rol) {
+    return rol === 'admin' ? 'RECURSOS/Angel.png' : 'RECURSOS/Dani.png';
+  }
+
+  // ============================================================
+  // INICIALIZACIÓN
+  // ============================================================
+  async function init() {
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        await onAuthSuccess(session);
+      } else {
+        showLogin();
+      }
+    } catch (e) {
+      console.error(e);
+      showLogin();
+    }
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        cleanup();
+        showLogin();
+      }
+    });
+  }
+
+  function showLogin() {
+    document.getElementById('loadingScreen').classList.add('hidden');
+    goto('login');
+  }
+
+  function cleanup() {
+    currentSession = null;
+    currentProfile = null;
+    facturas = [];
+    messagesByFactura = {};
+    historialByFactura = {};
+    if (realtimeChannel) {
+      sb.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
+  }
+
+  // ============================================================
+  // LOGIN / LOGOUT
+  // ============================================================
+  async function doLogin() {
+    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const pass  = document.getElementById('loginPass').value;
+    const err   = document.getElementById('loginError');
+    const btn   = document.getElementById('btnLogin');
+
+    err.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Iniciando sesión…';
+
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if (error) {
+        err.textContent = 'Email o contraseña incorrectos.';
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Ingresar';
+        return;
+      }
+      await onAuthSuccess(data.session);
+    } catch (e) {
+      console.error(e);
+      err.textContent = 'Error al conectar con el servidor. Inténtalo de nuevo.';
+      err.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Ingresar';
+    }
+  }
+
+  async function onAuthSuccess(session) {
+    currentSession = session;
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
+    if (error || !profile) {
+      console.error('Perfil no encontrado:', error);
+      showToast('Tu usuario no tiene un perfil asignado. Avisa al admin.', 'error');
+      await sb.auth.signOut();
+      return;
+    }
+    currentProfile = profile;
+    applyProfile();
+    await loadFacturas();
+    setupRealtime();
+    document.getElementById('loadingScreen').classList.add('hidden');
+    goto('dashboard');
+    document.getElementById('btnLogin').disabled = false;
+    document.getElementById('btnLogin').textContent = 'Ingresar';
+  }
+
+  async function logout() {
+    await sb.auth.signOut();
+    cleanup();
+    showLogin();
+  }
+
+  function applyProfile() {
+    document.getElementById('userName').textContent = currentProfile.nombre;
+    document.getElementById('userRole').textContent = currentProfile.rol === 'admin' ? 'Administrador' : 'Jefe';
+    document.getElementById('userAvatarInitial').textContent = currentProfile.nombre.charAt(0);
+    document.getElementById('userAvatarImg').src = avatarPathFor(currentProfile.rol);
+
+    document.querySelectorAll('.admin-only').forEach(el => {
+      if (currentProfile.rol === 'admin') el.classList.remove('hidden-by-role');
+      else el.classList.add('hidden-by-role');
+    });
+
+    if (currentProfile.rol === 'admin') {
+      document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
+      document.getElementById('dashSubtitle').textContent = 'Resumen del estado de las facturas';
+      document.getElementById('heroJefe').classList.add('hidden');
+    } else {
+      document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
+      document.getElementById('dashSubtitle').textContent = '';
+      document.getElementById('heroJefe').classList.remove('hidden');
+    }
+  }
+
+  // ============================================================
+  // CARGAR DATOS
+  // ============================================================
+  async function loadFacturas() {
+    const { data, error } = await sb
+      .from('facturas')
+      .select('*')
+      .order('fecha', { ascending: false });
+    if (error) {
+      console.error(error);
+      showToast('Error al cargar facturas: ' + error.message, 'error');
+      return;
+    }
+    facturas = (data || []).map(f => ({
+      id: f.id,
+      fecha: f.fecha,
+      concepto: f.concepto,
+      importe: parseFloat(f.importe),
+      mes: f.mes,
+      año: f.año,
+      estado: f.estado,
+      archivoSubido: !!f.archivo_path,
+      archivoPath: f.archivo_path,
+      formaPago: f.forma_pago,
+      createdBy: f.creada_por,
+      uploadedBy: f.subida_por,
+      fechaSubida: f.fecha_subida
+    }));
+    renderDashboard();
+    renderFacturas();
+  }
+
+  async function loadComentarios(facturaId) {
+    const { data, error } = await sb
+      .from('comentarios')
+      .select('*, profile:profiles!usuario_id(nombre, rol)')
+      .eq('factura_id', facturaId)
+      .order('fecha', { ascending: true });
+    if (error) {
+      console.error(error);
+      return;
+    }
+    messagesByFactura[facturaId] = (data || []).map(c => ({
+      author: c.profile?.rol || 'admin',
+      name: firstName(c.profile?.nombre || ''),
+      initial: (c.profile?.nombre || '?').charAt(0),
+      time: formatTime(c.fecha),
+      text: c.texto
+    }));
+    if (currentFacturaId === facturaId) renderChat();
+  }
+
+  async function loadHistorial(facturaId) {
+    const { data, error } = await sb
+      .from('historial')
+      .select('*, profile:profiles!usuario_id(nombre)')
+      .eq('factura_id', facturaId)
+      .order('fecha', { ascending: true });
+    if (error) {
+      console.error(error);
+      return;
+    }
+    historialByFactura[facturaId] = (data || []).map(h => ({
+      actor: firstName(h.profile?.nombre || 'Sistema'),
+      action: h.accion,
+      time: formatTime(h.fecha)
+    }));
+    if (currentFacturaId === facturaId) renderHistorialUI();
+  }
+
+  // ============================================================
+  // REALTIME
+  // ============================================================
+  function setupRealtime() {
+    if (realtimeChannel) sb.removeChannel(realtimeChannel);
+    realtimeChannel = sb.channel('app-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'facturas' }, async () => {
+        await loadFacturas();
+        if (currentFacturaId) renderDetalleFromState();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comentarios' }, async (payload) => {
+        const fid = payload.new?.factura_id || payload.old?.factura_id;
+        if (fid) await loadComentarios(fid);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'historial' }, async (payload) => {
+        const fid = payload.new?.factura_id || payload.old?.factura_id;
+        if (fid) await loadHistorial(fid);
+      })
+      .subscribe();
+  }
+
+  // ============================================================
+  // NAVEGACIÓN
+  // ============================================================
+  function goto(screen) {
+    ['login','dashboard','facturas','detalle'].forEach(s => {
+      document.getElementById('screen-' + s).classList.add('hidden');
+    });
+    if (screen === 'login') {
+      document.getElementById('appHeader').classList.add('hidden');
+    } else {
+      document.getElementById('appHeader').classList.remove('hidden');
+    }
+    document.getElementById('screen-' + screen).classList.remove('hidden');
+    document.getElementById('navDashboard').classList.toggle('active', screen === 'dashboard');
+    document.getElementById('navFacturas').classList.toggle('active', screen === 'facturas' || screen === 'detalle');
+
+    if (screen === 'dashboard') renderDashboard();
+    if (screen === 'facturas')  renderFacturas();
+    if (screen === 'detalle')   openDetalleScreen();
+
+    window.scrollTo(0, 0);
+  }
+
+  function filterTo(estado) {
+    document.getElementById('filterEstado').value = estado;
+    goto('facturas');
+  }
+  function resetFilters() {
+    document.getElementById('filterEstado').value = 'Todos';
+    document.getElementById('filterPago').value = 'Todos';
+    renderFacturas();
+  }
+
+  // ============================================================
+  // DASHBOARD
+  // ============================================================
+  function renderDashboard() {
+    const pend = facturas.filter(f => f.estado === 'Pendiente').length;
+    const sub  = facturas.filter(f => f.estado === 'Subida').length;
+    const rev  = facturas.filter(f => f.estado === 'Revisada').length;
+    const setText = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setText('statPend', pend);
+    setText('statSub', sub);
+    setText('statRev', rev);
+    setText('heroPendCount', pend);
+
+    const lastPend = facturas
+      .filter(f => f.estado === 'Pendiente')
+      .sort((a,b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, 5);
+
+    const tbody = document.getElementById('lastPendList');
+    if (!tbody) return;
+    if (lastPend.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No hay facturas pendientes 🎉</td></tr>';
+    } else {
+      tbody.innerHTML = lastPend.map(f => `
+        <tr onclick="openDetalle('${f.id}')">
+          <td style="width:40px;"><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--warning);"></span></td>
+          <td><strong>${escapeHtml(f.concepto)}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${formatDate(f.fecha)} · ${f.mes} ${f.año}</span></td>
+          <td style="text-align:right; font-weight:700;">${formatMoney(f.importe)}</td>
+        </tr>
+      `).join('');
+    }
+  }
+
+  // ============================================================
+  // LISTADO POR BLOQUES MES/AÑO
+  // ============================================================
+  function renderFacturas() {
+    const container = document.getElementById('facturasList');
+    if (!container) return;
+    const filterEstado = document.getElementById('filterEstado').value;
+    const filterPago   = document.getElementById('filterPago').value;
+
+    let filtered = facturas.filter(f => {
+      if (filterEstado !== 'Todos' && f.estado !== filterEstado) return false;
+      if (filterPago   !== 'Todos' && f.formaPago !== filterPago) return false;
+      return true;
+    });
+
+    document.getElementById('facturasSubtitle').textContent =
+      `${filtered.length} factura${pluralize(filtered.length, '', 's')} · ${facturas.length} en total`;
+
+    const groups = {};
+    filtered.forEach(f => {
+      const key = `${f.año}-${MESES.indexOf(f.mes)}`;
+      if (!groups[key]) groups[key] = { año: f.año, mes: f.mes, items: [] };
+      groups[key].items.push(f);
+    });
+
+    const sorted = Object.entries(groups).sort((a, b) => {
+      const [aYear, aMesIdx] = a[0].split('-').map(Number);
+      const [bYear, bMesIdx] = b[0].split('-').map(Number);
+      if (aYear !== bYear) return bYear - aYear;
+      return bMesIdx - aMesIdx;
+    });
+
+    if (sorted.length === 0) {
+      container.innerHTML = '<div class="empty-state">No hay facturas que coincidan con los filtros.</div>';
+      return;
+    }
+
+    const isExpanded = (key) => {
+      if (expandedKeys === null) return key === sorted[0][0];
+      return expandedKeys.has(key);
+    };
+
+    container.innerHTML = sorted.map(([key, g]) => {
+      const items = g.items.sort((a,b) => b.fecha.localeCompare(a.fecha));
+      const pend = items.filter(f => f.estado === 'Pendiente').length;
+      const sub  = items.filter(f => f.estado === 'Subida').length;
+      const rev  = items.filter(f => f.estado === 'Revisada').length;
+      const expanded = isExpanded(key);
+
+      const chips = [];
+      if (pend > 0) chips.push(`<span class="summary-chip status-pendiente"><span class="dot"></span>${pend} pendiente${pluralize(pend, '', 's')}</span>`);
+      if (sub  > 0) chips.push(`<span class="summary-chip status-subida"><span class="dot"></span>${sub} subida${pluralize(sub, '', 's')}</span>`);
+      if (rev  > 0) chips.push(`<span class="summary-chip status-revisada"><span class="dot"></span>${rev} revisada${pluralize(rev, '', 's')}</span>`);
+
+      return `
+        <div class="month-block ${expanded ? 'expanded' : ''}" data-key="${key}">
+          <div class="month-block-header" onclick="toggleMonth('${key}')">
+            <div class="month-block-title">
+              <span class="chevron">▾</span>
+              ${g.mes} ${g.año}
+              <span class="meta">· ${items.length} factura${pluralize(items.length, '', 's')}</span>
+            </div>
+            <div class="month-block-summary">${chips.join('')}</div>
+          </div>
+          <div class="month-block-body">
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Estado</th>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th>Forma de pago</th>
+                    <th style="text-align:right;">Importe</th>
+                    <th style="text-align:center;">Archivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${items.map(f => renderRow(f)).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderRow(f) {
+    const archivo = f.archivoSubido
+      ? '<span style="color:var(--btn-color);">📄 PDF</span>'
+      : '<span style="color:var(--text-muted);">—</span>';
+    return `
+      <tr onclick="openDetalle('${f.id}')">
+        <td><span class="status-badge status-${f.estado.toLowerCase()}"><span class="dot"></span>${f.estado}</span></td>
+        <td>${formatDate(f.fecha)}</td>
+        <td><strong>${escapeHtml(f.concepto)}</strong></td>
+        <td>${pagoLabel(f.formaPago)}</td>
+        <td style="text-align:right; font-weight:700;">${formatMoney(f.importe)}</td>
+        <td style="text-align:center;">${archivo}</td>
+      </tr>
+    `;
+  }
+
+  function toggleMonth(key) {
+    if (expandedKeys === null) {
+      expandedKeys = new Set();
+      const first = document.querySelector('.month-block.expanded');
+      if (first) expandedKeys.add(first.dataset.key);
+    }
+    if (expandedKeys.has(key)) expandedKeys.delete(key);
+    else expandedKeys.add(key);
+    const block = document.querySelector(`.month-block[data-key="${key}"]`);
+    if (block) block.classList.toggle('expanded');
+  }
+
+  // ============================================================
+  // DETALLE
+  // ============================================================
+  function openDetalle(id) {
+    currentFacturaId = id;
+    pendingFile = null;
+    goto('detalle');
+  }
+
+  function getCurrentFactura() {
+    return facturas.find(f => f.id === currentFacturaId);
+  }
+
+  async function openDetalleScreen() {
+    renderDetalleFromState();
+    if (currentFacturaId) {
+      await loadComentarios(currentFacturaId);
+      await loadHistorial(currentFacturaId);
+    }
+  }
+
+  function renderDetalleFromState() {
+    const f = getCurrentFactura();
+    if (!f) return;
+
+    document.getElementById('detailTitle').textContent = f.concepto;
+    document.getElementById('detailFecha').textContent = formatDate(f.fecha);
+    document.getElementById('detailMes').textContent   = `${f.mes} ${f.año}`;
+    document.getElementById('detailImporte').textContent = formatMoney(f.importe);
+    document.getElementById('detailFormaPago').textContent = pagoLabel(f.formaPago);
+
+    const badge = document.getElementById('detailBadge');
+    badge.className = 'status-badge status-' + f.estado.toLowerCase();
+    badge.innerHTML = '<span class="dot"></span>' + f.estado;
+
+    if (pendingFile) {
+      document.getElementById('zoneEmpty').classList.add('hidden');
+      document.getElementById('zoneFilled').classList.remove('hidden');
+      document.getElementById('fileName').textContent = pendingFile.name;
+      document.getElementById('fileMeta').textContent = 'Pendiente de guardar…';
+    } else if (f.archivoSubido) {
+      document.getElementById('zoneEmpty').classList.add('hidden');
+      document.getElementById('zoneFilled').classList.remove('hidden');
+      const filename = f.archivoPath ? f.archivoPath.split('/').pop().replace(/^\d+-/, '') : 'archivo.pdf';
+      document.getElementById('fileName').textContent = filename;
+      document.getElementById('fileMeta').textContent = `Subido · ${formatTime(f.fechaSubida)}`;
+    } else {
+      document.getElementById('zoneEmpty').classList.remove('hidden');
+      document.getElementById('zoneFilled').classList.add('hidden');
+    }
+
+    const btnRev = document.getElementById('btnRevisar');
+    if (f.estado === 'Subida' && currentProfile?.rol === 'admin') {
+      btnRev.classList.remove('hidden');
+    } else {
+      btnRev.classList.add('hidden');
+    }
+
+    updateSaveBar();
+  }
+
+  function updateSaveBar() {
+    const saveBar = document.getElementById('saveBar');
+    if (pendingFile) saveBar.classList.remove('hidden');
+    else saveBar.classList.add('hidden');
+  }
+
+  // ============================================================
+  // SUBIDA + GUARDAR
+  // ============================================================
+  function handleFilePick(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('El archivo es demasiado grande. Máximo 10 MB.', 'error');
+      event.target.value = '';
+      return;
+    }
+    pendingFile = file;
+    renderDetalleFromState();
+  }
+
+  async function saveChanges() {
+    if (!pendingFile || !currentFacturaId) return;
+    const btn = document.getElementById('btnGuardar');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+      const ext = pendingFile.name.split('.').pop();
+      const path = `${currentFacturaId}/${Date.now()}-${pendingFile.name}`;
+
+      const { error: upErr } = await sb.storage.from('facturas').upload(path, pendingFile);
+      if (upErr) throw upErr;
+
+      const { error: updErr } = await sb.from('facturas')
+        .update({ archivo_path: path })
+        .eq('id', currentFacturaId);
+      if (updErr) throw updErr;
+
+      pendingFile = null;
+      document.getElementById('filePicker').value = '';
+      showToast('✓ Cambios guardados correctamente');
+      await loadFacturas();
+      renderDetalleFromState();
+    } catch (e) {
+      console.error(e);
+      showToast('Error al guardar: ' + (e.message || e), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'GUARDAR';
+    }
+  }
+
+  async function markAsRevisada() {
+    if (!currentFacturaId) return;
+    const { error } = await sb.from('facturas')
+      .update({ estado: 'Revisada' })
+      .eq('id', currentFacturaId);
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      return;
+    }
+    showToast('✓ Factura marcada como Revisada');
+  }
+
+  async function deleteFactura() {
+    if (!currentFacturaId) return;
+    const f = getCurrentFactura();
+    if (!f) return;
+    if (!confirm(`¿Seguro que quieres eliminar "${f.concepto}"? No se podrá deshacer.`)) return;
+
+    if (f.archivoPath) {
+      await sb.storage.from('facturas').remove([f.archivoPath]);
+    }
+    const { error } = await sb.from('facturas').delete().eq('id', currentFacturaId);
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      return;
+    }
+    showToast('Factura eliminada');
+    currentFacturaId = null;
+    goto('facturas');
+  }
+
+  async function viewFile() {
+    const f = getCurrentFactura();
+    if (!f || !f.archivoPath) return;
+    const { data, error } = await sb.storage
+      .from('facturas')
+      .createSignedUrl(f.archivoPath, 60 * 60);
+    if (error) {
+      showToast('Error al abrir el archivo: ' + error.message, 'error');
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
+  }
+
+  async function downloadFile() {
+    const f = getCurrentFactura();
+    if (!f || !f.archivoPath) return;
+    const { data, error } = await sb.storage.from('facturas').download(f.archivoPath);
+    if (error) {
+      showToast('Error al descargar: ' + error.message, 'error');
+      return;
+    }
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = f.archivoPath.split('/').pop().replace(/^\d+-/, '');
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ============================================================
+  // CHAT
+  // ============================================================
+  function renderChat() {
+    const list = document.getElementById('chatList');
+    if (!list) return;
+    const id = currentFacturaId;
+    const msgs = messagesByFactura[id] || [];
+    if (msgs.length === 0) {
+      list.innerHTML = '<div class="chat-empty">Aún no hay mensajes. Empieza la conversación 👇</div>';
+      return;
+    }
+    list.innerHTML = msgs.map(m => {
+      const myRole = currentProfile?.rol;
+      const isMine = m.author === myRole;
+      const cls = isMine ? 'mine' : 'theirs';
+      const avatarSrc = m.author === 'admin' ? 'RECURSOS/Angel.png' : 'RECURSOS/Dani.png';
+      return `<div class="chat-msg ${cls}">
+        <div class="chat-avatar">
+          <img src="${avatarSrc}" alt=""
+               onload="this.style.display='block'; this.nextElementSibling.style.display='none';"
+               onerror="this.style.display='none';">
+          <span class="chat-avatar-initial">${escapeHtml(m.initial)}</span>
+        </div>
+        <div class="chat-bubble">
+          <div class="chat-meta">
+            <span class="chat-author">${escapeHtml(m.name)}</span>
+            <span class="chat-time">${escapeHtml(m.time)}</span>
+          </div>
+          <div class="chat-text">${escapeHtml(m.text)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text || !currentFacturaId) return;
+    input.disabled = true;
+    const { error } = await sb.from('comentarios').insert({
+      factura_id: currentFacturaId,
+      usuario_id: currentSession.user.id,
+      texto: text
+    });
+    input.disabled = false;
+    if (error) {
+      showToast('Error al enviar: ' + error.message, 'error');
+      return;
+    }
+    input.value = '';
+    input.focus();
+  }
+
+  // ============================================================
+  // HISTORIAL
+  // ============================================================
+  function renderHistorialUI() {
+    const list = document.getElementById('historyList');
+    if (!list) return;
+    const items = historialByFactura[currentFacturaId] || [];
+    if (items.length === 0) {
+      list.innerHTML = '<li style="color:var(--text-muted);">Sin movimientos todavía.</li>';
+      return;
+    }
+    list.innerHTML = items.map(h => `
+      <li>
+        <span class="h-dot"></span>
+        <span class="h-actor">${escapeHtml(h.actor)}</span>
+        <span>${escapeHtml(h.action)}</span>
+        <span class="h-time">${escapeHtml(h.time)}</span>
+      </li>
+    `).join('');
+  }
+
+  // ============================================================
+  // MODAL — NUEVA FACTURA
+  // ============================================================
+  function openModal() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('newFecha').value = today;
+    document.getElementById('newMes').value = MESES[new Date().getMonth()];
+    document.getElementById('modalNueva').classList.remove('hidden');
+  }
+  function closeModal() {
+    document.getElementById('modalNueva').classList.add('hidden');
+    document.getElementById('newForm').reset();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('newFecha').addEventListener('change', (e) => {
+      if (e.target.value) {
+        const [y, m, d] = e.target.value.split('-').map(Number);
+        document.getElementById('newMes').value = MESES[m - 1];
+      }
+    });
+  });
+
+  async function submitNuevaFactura() {
+    const fecha    = document.getElementById('newFecha').value;
+    const concepto = document.getElementById('newConcepto').value.trim();
+    const importe  = parseFloat(document.getElementById('newImporte').value);
+    const mes      = document.getElementById('newMes').value;
+    const formaPago = document.getElementById('newPago').value;
+    const comentario = document.getElementById('newComentario').value.trim();
+
+    if (!fecha || !concepto || isNaN(importe) || !mes || !formaPago) return;
+    const año = parseInt(fecha.split('-')[0], 10);
+
+    const btn = document.getElementById('btnGuardarFactura');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+      const { data, error } = await sb.from('facturas').insert({
+        fecha, concepto, importe, mes, año,
+        forma_pago: formaPago,
+        estado: 'Pendiente',
+        creada_por: currentSession.user.id
+      }).select().single();
+      if (error) throw error;
+
+      if (comentario && data) {
+        await sb.from('comentarios').insert({
+          factura_id: data.id,
+          usuario_id: currentSession.user.id,
+          texto: comentario
+        });
+      }
+
+      const newKey = `${año}-${MESES.indexOf(mes)}`;
+      if (expandedKeys === null) expandedKeys = new Set();
+      expandedKeys.add(newKey);
+
+      closeModal();
+      showToast(`✓ Nueva factura creada — ${mes} ${año}`);
+    } catch (e) {
+      console.error(e);
+      showToast('Error al crear: ' + (e.message || e), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Guardar factura';
+    }
+  }
+
+  // ============================================================
+  // TOAST
+  // ============================================================
+  function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = 'toast' + (type === 'error' ? ' error' : type === 'info' ? ' info' : '');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity .3s';
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  // ============================================================
+  // ARRANQUE
+  // ============================================================
+  init();
+</script>
+
+</body>
+</html>

@@ -811,21 +811,16 @@
     </div>
 
     <!-- KPIs -->
-    <div class="grid-stats">
+    <div class="grid-stats" style="grid-template-columns: repeat(2, 1fr);">
       <div class="stat-card">
         <div class="stat-label">Total facturas</div>
         <div class="stat-value" id="kpiTotal">0</div>
         <div class="stat-meta">en el sistema</div>
       </div>
       <div class="stat-card amount">
-        <div class="stat-label">Importe total</div>
+        <div class="stat-label">Importe total por facturar</div>
         <div class="stat-value" id="kpiAmount">0,00 €</div>
         <div class="stat-meta">suma acumulada</div>
-      </div>
-      <div class="stat-card amount">
-        <div class="stat-label">Importe medio</div>
-        <div class="stat-value" id="kpiAvg">0,00 €</div>
-        <div class="stat-meta">por factura</div>
       </div>
     </div>
 
@@ -1891,11 +1886,9 @@
     if (!facturas) return;
     const total = facturas.length;
     const totalImporte = facturas.reduce((s, f) => s + (f.importe || 0), 0);
-    const avgImporte = total ? (totalImporte / total) : 0;
 
     document.getElementById('kpiTotal').textContent = total;
     document.getElementById('kpiAmount').textContent = formatMoney(totalImporte);
-    document.getElementById('kpiAvg').textContent    = formatMoney(avgImporte);
 
     // Datos por estado
     const estados = ['Pendiente','Subida','Revisada'];

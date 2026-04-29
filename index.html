@@ -462,6 +462,28 @@
   }
   .chat-msg.theirs .chat-bubble { border-bottom-left-radius: 4px; }
   .chat-msg.mine   .chat-bubble { background: rgba(53,168,224,0.3); border-color: rgba(53,168,224,0.5); border-bottom-right-radius: 4px; }
+  .chat-bubble { position: relative; }
+  .chat-delete {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    border: none;
+    background: rgba(0,0,0,0.25);
+    color: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s, background .15s;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.7rem;
+    font-family: inherit;
+    line-height: 1;
+  }
+  .chat-msg:hover .chat-delete { opacity: 1; }
+  .chat-delete:hover { background: rgba(239,68,68,0.7); }
+  @media (hover: none) {
+    .chat-delete { opacity: 0.55; }
+  }
   .chat-meta { display: flex; justify-content: space-between; gap: 0.7rem; margin-bottom: 0.2rem; }
   .chat-author { font-size: 0.8rem; font-weight: 600; color: #fff; }
   .chat-time { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
@@ -1132,6 +1154,7 @@
       return;
     }
     messagesByFactura[facturaId] = (data || []).map(c => ({
+      id: c.id,
       author: c.profile?.rol || 'admin',
       name: firstName(c.profile?.nombre || ''),
       initial: (c.profile?.nombre || '?').charAt(0),
@@ -1555,6 +1578,9 @@
       const isMine = m.author === myRole;
       const cls = isMine ? 'mine' : 'theirs';
       const avatarSrc = avatarPathFor(m.author);
+      const deleteBtn = myRole === 'admin'
+        ? `<button class="chat-delete" onclick="deleteComment('${m.id}')" title="Eliminar comentario">✕</button>`
+        : '';
       return `<div class="chat-msg ${cls}">
         <div class="chat-avatar">
           <img src="${avatarSrc}" alt=""
@@ -1563,6 +1589,7 @@
           <span class="chat-avatar-initial">${escapeHtml(m.initial)}</span>
         </div>
         <div class="chat-bubble">
+          ${deleteBtn}
           <div class="chat-meta">
             <span class="chat-author">${escapeHtml(m.name)}</span>
             <span class="chat-time">${escapeHtml(m.time)}</span>
@@ -1591,6 +1618,18 @@
     }
     input.value = '';
     input.focus();
+  }
+
+  async function deleteComment(commentId) {
+    if (!commentId) return;
+    if (!confirm('¿Eliminar este comentario? No se puede deshacer.')) return;
+    const { error } = await sb.from('comentarios').delete().eq('id', commentId);
+    if (error) {
+      showToast('Error al eliminar: ' + error.message, 'error');
+      return;
+    }
+    showToast('Comentario eliminado');
+    // Realtime refresca el chat solo
   }
 
   // ============================================================

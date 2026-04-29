@@ -815,7 +815,7 @@
       <div class="stat-card">
         <div class="stat-label">Total facturas</div>
         <div class="stat-value" id="kpiTotal">0</div>
-        <div class="stat-meta">en el sistema</div>
+        <div class="stat-meta" id="kpiTotalMeta">— por facturar</div>
       </div>
       <div class="stat-card amount">
         <div class="stat-label">Importe total por facturar</div>
@@ -1889,6 +1889,10 @@
     const importePorFacturar = pendientes.reduce((s, f) => s + (f.importe || 0), 0);
 
     document.getElementById('kpiTotal').textContent = total;
+    document.getElementById('kpiTotalMeta').textContent =
+      pendientes.length === 0
+        ? 'todas facturadas 🎉'
+        : `${pendientes.length} por facturar`;
     document.getElementById('kpiAmount').textContent = formatMoney(importePorFacturar);
     document.getElementById('kpiAmountMeta').textContent =
       pendientes.length === 0

@@ -1266,6 +1266,11 @@
     }));
     renderDashboard();
     renderFacturas();
+    // Si está viendo Estadísticas, refrescamos también esa pantalla
+    const estScreen = document.getElementById('screen-estadisticas');
+    if (estScreen && !estScreen.classList.contains('hidden')) {
+      renderEstadisticas();
+    }
   }
 
   async function loadComentarios(facturaId) {

@@ -513,7 +513,22 @@
   .modal-actions .btn { width: auto; padding: 0.6rem 1.2rem; font-size: 0.95rem; }
 
   .hidden { display: none !important; }
-  .admin-only.hidden-by-role { display: none !important; }
+  .hidden-by-role { display: none !important; }
+
+  /* Placeholder para supervisor cuando no hay archivo subido */
+  .readonly-placeholder {
+    border: 2px dashed rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    background: rgba(255,255,255,0.02);
+    color: var(--text-muted);
+  }
+  .readonly-placeholder .placeholder-icon {
+    font-size: 2.5rem;
+    opacity: 0.5;
+    margin-bottom: 0.5rem;
+  }
   .empty-state { text-align: center; padding: 3rem; color: var(--text-muted); }
   .toolbar {
     display: flex; justify-content: space-between; align-items: center;
@@ -764,11 +779,15 @@
       <h3>Archivo</h3>
       <input type="file" id="filePicker" accept=".pdf,image/*,application/pdf" style="display:none" onchange="handleFilePick(event)">
       <div id="zoneEmpty">
-        <div class="upload-zone" onclick="document.getElementById('filePicker').click()">
+        <div class="upload-zone uploader-only" onclick="document.getElementById('filePicker').click()">
           <div class="upload-icon">📤</div>
           <div class="upload-title">Subir archivo</div>
           <div class="upload-hint">Haz clic para seleccionar un PDF o imagen</div>
           <div class="upload-hint" style="margin-top:0.4rem; opacity:0.7;">PDF, JPG o PNG · máx. 10 MB</div>
+        </div>
+        <div class="readonly-placeholder supervisor-only">
+          <div class="placeholder-icon">📭</div>
+          <div>Aún no se ha subido ningún archivo para esta factura.</div>
         </div>
       </div>
       <div id="zoneFilled" class="hidden">
@@ -783,7 +802,7 @@
           <div style="display:flex; gap:0.5rem; flex-wrap: wrap;">
             <button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="viewFile()">Ver</button>
             <button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="downloadFile()">Descargar</button>
-            <button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="document.getElementById('filePicker').click()">Reemplazar</button>
+            <button class="btn btn-secondary btn-inline uploader-only" style="margin-top:0;" onclick="document.getElementById('filePicker').click()">Reemplazar</button>
           </div>
         </div>
         <button id="btnRevisar" class="btn btn-success admin-only hidden" style="margin-top:1rem;" onclick="markAsRevisada()">✓ Marcar como Revisada</button>
@@ -913,7 +932,19 @@
   function pluralize(n, sing, plur) { return n === 1 ? sing : plur; }
   function firstName(full) { return (full || '').split(' ')[0] || '—'; }
   function avatarPathFor(rol) {
-    return rol === 'admin' ? 'RECURSOS/Angel.png' : 'RECURSOS/Dani.png';
+    if (rol === 'admin')      return 'RECURSOS/Angel.png';
+    if (rol === 'jefe')       return 'RECURSOS/Dani.png';
+    if (rol === 'supervisor') return 'RECURSOS/lozano@4x.png';
+    return '';
+  }
+  function canUpload() {
+    return currentProfile?.rol === 'admin' || currentProfile?.rol === 'jefe';
+  }
+  function roleLabel(rol) {
+    if (rol === 'admin')      return 'Administrador';
+    if (rol === 'jefe')       return 'Jefe';
+    if (rol === 'supervisor') return 'Supervisor';
+    return '—';
   }
 
   // ============================================================
@@ -1019,23 +1050,40 @@
 
   function applyProfile() {
     document.getElementById('userName').textContent = currentProfile.nombre;
-    document.getElementById('userRole').textContent = currentProfile.rol === 'admin' ? 'Administrador' : 'Jefe';
+    document.getElementById('userRole').textContent = roleLabel(currentProfile.rol);
     document.getElementById('userAvatarInitial').textContent = currentProfile.nombre.charAt(0);
     document.getElementById('userAvatarImg').src = avatarPathFor(currentProfile.rol);
 
+    // Mostrar/ocultar elementos solo de admin (crear, eliminar, marcar revisada)
     document.querySelectorAll('.admin-only').forEach(el => {
       if (currentProfile.rol === 'admin') el.classList.remove('hidden-by-role');
       else el.classList.add('hidden-by-role');
     });
 
+    // Mostrar/ocultar elementos de subida (admin + jefe; supervisor NO)
+    document.querySelectorAll('.uploader-only').forEach(el => {
+      if (canUpload()) el.classList.remove('hidden-by-role');
+      else el.classList.add('hidden-by-role');
+    });
+
+    // Mostrar elementos solo para supervisor (placeholder de "sin archivo")
+    document.querySelectorAll('.supervisor-only').forEach(el => {
+      if (currentProfile.rol === 'supervisor') el.classList.remove('hidden-by-role');
+      else el.classList.add('hidden-by-role');
+    });
+
+    document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
+
     if (currentProfile.rol === 'admin') {
-      document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
       document.getElementById('dashSubtitle').textContent = 'Resumen del estado de las facturas';
       document.getElementById('heroJefe').classList.add('hidden');
-    } else {
-      document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
+    } else if (currentProfile.rol === 'jefe') {
       document.getElementById('dashSubtitle').textContent = '';
       document.getElementById('heroJefe').classList.remove('hidden');
+    } else {
+      // supervisor
+      document.getElementById('dashSubtitle').textContent = 'Vista de supervisión · solo lectura';
+      document.getElementById('heroJefe').classList.add('hidden');
     }
   }
 
@@ -1504,7 +1552,7 @@
       const myRole = currentProfile?.rol;
       const isMine = m.author === myRole;
       const cls = isMine ? 'mine' : 'theirs';
-      const avatarSrc = m.author === 'admin' ? 'RECURSOS/Angel.png' : 'RECURSOS/Dani.png';
+      const avatarSrc = avatarPathFor(m.author);
       return `<div class="chat-msg ${cls}">
         <div class="chat-avatar">
           <img src="${avatarSrc}" alt=""

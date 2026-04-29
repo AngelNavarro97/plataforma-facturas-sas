@@ -820,7 +820,7 @@
       <div class="stat-card amount">
         <div class="stat-label">Importe total por facturar</div>
         <div class="stat-value" id="kpiAmount">0,00 €</div>
-        <div class="stat-meta">suma acumulada</div>
+        <div class="stat-meta" id="kpiAmountMeta">solo facturas pendientes</div>
       </div>
     </div>
 
@@ -1885,10 +1885,15 @@
   function renderEstadisticas() {
     if (!facturas) return;
     const total = facturas.length;
-    const totalImporte = facturas.reduce((s, f) => s + (f.importe || 0), 0);
+    const pendientes = facturas.filter(f => f.estado === 'Pendiente');
+    const importePorFacturar = pendientes.reduce((s, f) => s + (f.importe || 0), 0);
 
     document.getElementById('kpiTotal').textContent = total;
-    document.getElementById('kpiAmount').textContent = formatMoney(totalImporte);
+    document.getElementById('kpiAmount').textContent = formatMoney(importePorFacturar);
+    document.getElementById('kpiAmountMeta').textContent =
+      pendientes.length === 0
+        ? 'no hay facturas pendientes 🎉'
+        : `${pendientes.length} factura${pendientes.length === 1 ? '' : 's'} pendiente${pendientes.length === 1 ? '' : 's'}`;
 
     // Datos por estado
     const estados = ['Pendiente','Subida','Revisada'];

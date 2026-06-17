@@ -811,6 +811,7 @@
           <option value="Todos">Todas</option>
           <option value="cuenta_corriente">Cuenta corriente</option>
           <option value="tarjeta">Tarjeta</option>
+          <option value="amex">AMEX</option>
         </select>
       </div>
       <button class="nav-link" style="margin-left:auto;" onclick="resetFilters()">Limpiar filtros</button>
@@ -879,6 +880,7 @@
               <th style="text-align:center;">Revisadas</th>
               <th style="text-align:center;">Cta. Cte.</th>
               <th style="text-align:center;">Tarjeta</th>
+              <th style="text-align:center;">AMEX</th>
             </tr>
           </thead>
           <tbody id="statsTableBody"></tbody>
@@ -1024,6 +1026,7 @@
             <option value="">Selecciona…</option>
             <option value="cuenta_corriente">Cuenta corriente</option>
             <option value="tarjeta">Tarjeta</option>
+            <option value="amex">AMEX</option>
           </select>
         </div>
         <div class="form-group">
@@ -1053,7 +1056,7 @@
   // CONSTANTES
   // ============================================================
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  const PAGO_LABELS = { cuenta_corriente: 'Cuenta corriente', tarjeta: 'Tarjeta' };
+  const PAGO_LABELS = { cuenta_corriente: 'Cuenta corriente', tarjeta: 'Tarjeta', amex: 'AMEX' };
 
   // ============================================================
   // ESTADO
@@ -1939,6 +1942,7 @@
     // Datos por forma de pago
     const cc = facturas.filter(f => f.formaPago === 'cuenta_corriente').length;
     const tj = facturas.filter(f => f.formaPago === 'tarjeta').length;
+    const am = facturas.filter(f => f.formaPago === 'amex').length;
 
     // Datos por mes (último año)
     const groups = {};
@@ -1973,6 +1977,7 @@
         const r = g.facturas.filter(f => f.estado === 'Revisada').length;
         const c = g.facturas.filter(f => f.formaPago === 'cuenta_corriente').length;
         const t = g.facturas.filter(f => f.formaPago === 'tarjeta').length;
+        const a = g.facturas.filter(f => f.formaPago === 'amex').length;
         return `
           <tr>
             <td><strong>${g.mes} ${g.año}</strong></td>
@@ -1983,6 +1988,7 @@
             <td style="text-align:center; color:${r > 0 ? '#34d399' : 'var(--text-muted)'};">${r}</td>
             <td style="text-align:center; color: var(--text-muted);">${c}</td>
             <td style="text-align:center; color: var(--text-muted);">${t}</td>
+            <td style="text-align:center; color: var(--text-muted);">${a}</td>
           </tr>
         `;
       }).join('');
@@ -2022,10 +2028,10 @@
       _chartPago = new Chart(document.getElementById('chartPago'), {
         type: 'doughnut',
         data: {
-          labels: ['Cuenta corriente','Tarjeta'],
+          labels: ['Cuenta corriente','Tarjeta','AMEX'],
           datasets: [{
-            data: [cc, tj],
-            backgroundColor: ['#35a8e0', '#c4b5fd'],
+            data: [cc, tj, am],
+            backgroundColor: ['#35a8e0', '#c4b5fd', '#34d399'],
             borderColor: 'rgba(255,255,255,0.1)',
             borderWidth: 2
           }]

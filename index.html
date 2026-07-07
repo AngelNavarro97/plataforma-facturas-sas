@@ -2506,45 +2506,71 @@
     title.innerHTML = '<span class="ocr-spinner"></span>Leyendo la captura…';
 
     try {
-      const { blob, dataUrl } = await resizeImage(file);
-      capturaBlob = blob;
-      capturaDataUrl = dataUrl;
+      // Redimensionar la imagen; si el navegador no puede procesarla,
+      // la enviamos tal cual (si es un formato que la IA entiende)
+      let base64, mediaType;
+      try {
+        const { blob, dataUrl } = await resizeImage(file);
+        capturaBlob = blob;
+        capturaDataUrl = dataUrl;
+        base64 = dataUrl.split(',')[1];
+        mediaType = 'image/jpeg';
+      } catch (resizeErr) {
+        if (!['image/jpeg','image/png','image/webp','image/gif'].includes(file.type)) {
+          throw new Error('Formato de imagen no compatible. Usa una captura JPG o PNG.');
+        }
+        capturaDataUrl = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = () => rej(new Error('No se pudo leer el archivo'));
+          r.readAsDataURL(file);
+        });
+        capturaBlob = file;
+        base64 = capturaDataUrl.split(',')[1];
+        mediaType = file.type;
+      }
 
-      const base64 = dataUrl.split(',')[1];
       const resp = await fetch('/api/extraer-datos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + currentSession.access_token
         },
-        body: JSON.stringify({ image: base64, mediaType: 'image/jpeg', idioma: solIdioma })
+        body: JSON.stringify({ image: base64, mediaType: mediaType, idioma: solIdioma })
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
-        throw new Error(err.error || 'No se pudo leer la captura');
+        throw new Error(err.error || 'No se pudo leer la captura (error ' + resp.status + ')');
       }
       const { datos } = await resp.json();
 
-      // Rellenar campos (el usuario los revisa antes de enviar)
-      const fill = (id, valor) => { if (valor) document.getElementById(id).value = valor; };
+      // Rellenar todos los campos que la IA haya encontrado
+      // (el usuario los revisa antes de enviar)
+      let rellenados = 0;
+      const fill = (id, valor) => { if (valor) { document.getElementById(id).value = valor; rellenados++; } };
       fill('solNif', datos.nif);
       fill('solNombreFiscal', datos.nombre_fiscal);
       fill('solDireccion', datos.direccion);
       fill('solCp', datos.codigo_postal);
       fill('solProvincia', datos.provincia);
-      if (solIdioma === 'en') fill('solPais', datos.pais);
-      if (solIdioma === 'it') fill('solCodice', datos.codice_univoco);
+      fill('solPais', datos.pais);
+      fill('solCodice', datos.codice_univoco);
       // Cliente y email solo si aún están vacíos
-      if (!document.getElementById('solCliente').value && datos.nombre_cliente) document.getElementById('solCliente').value = datos.nombre_cliente;
-      if (!document.getElementById('solEmail').value && datos.email_cliente) document.getElementById('solEmail').value = datos.email_cliente;
+      if (!document.getElementById('solCliente').value && datos.nombre_cliente) { document.getElementById('solCliente').value = datos.nombre_cliente; rellenados++; }
+      if (!document.getElementById('solEmail').value && datos.email_cliente) { document.getElementById('solEmail').value = datos.email_cliente; rellenados++; }
 
       // Mostrar la miniatura de la captura
       document.getElementById('ocrThumb').src = capturaDataUrl;
       document.getElementById('ocrFileName').textContent = file.name;
-      document.getElementById('ocrFileStatus').textContent = '✓ Datos extraídos — revísalos antes de enviar';
       document.getElementById('ocrPreview').classList.remove('hidden');
       zone.classList.add('hidden');
-      showToast('✓ Campos rellenados desde la captura. Revísalos antes de enviar.');
+      if (rellenados > 0) {
+        document.getElementById('ocrFileStatus').textContent = `✓ ${rellenados} campo${rellenados === 1 ? '' : 's'} rellenado${rellenados === 1 ? '' : 's'} — revísalos antes de enviar`;
+        showToast('✓ Campos rellenados desde la captura. Revísalos antes de enviar.');
+      } else {
+        document.getElementById('ocrFileStatus').textContent = '⚠ No se encontraron datos fiscales en la imagen — rellénalos a mano (la captura se adjuntará igualmente)';
+        showToast('No se encontraron datos fiscales en la captura. Rellena los campos a mano.', 'info');
+      }
     } catch (e) {
       console.error(e);
       // La captura se conserva adjunta aunque falle la lectura automática

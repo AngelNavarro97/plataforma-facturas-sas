@@ -88,9 +88,7 @@ Reglas:
               { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
               { type: 'text', text: prompt }
             ]
-          },
-          // Prefill: obliga al modelo a empezar la respuesta con "{" (JSON directo)
-          { role: 'assistant', content: '{' }
+          }
         ]
       })
     });
@@ -108,9 +106,9 @@ Reglas:
     }
 
     const aiData = await aiResp.json();
-    // Reconstruir el JSON: el prefill hace que la respuesta empiece sin la "{" inicial
-    let text = '{' + (aiData.content?.[0]?.text || '').trim();
-    text = text.replace(/```/g, '');
+    // Quedarnos solo con el JSON de la respuesta (por si añade texto alrededor)
+    let text = (aiData.content?.map(c => c.text || '').join('') || '').trim();
+    text = text.replace(/```(?:json)?/gi, '');
     const start = text.indexOf('{');
     const end = text.lastIndexOf('}');
     if (start === -1 || end === -1 || end <= start) {

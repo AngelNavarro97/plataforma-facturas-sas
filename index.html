@@ -610,6 +610,79 @@
   .toolbar p { color: var(--text-muted); font-size: 0.9rem; }
 
   /* ============================================================
+     SOLICITUDES DE FACTURA
+  ============================================================ */
+  .status-facturada { color: #34d399; border-color: rgba(52,211,153,0.5); background: rgba(52,211,153,0.1); }
+  .status-facturada .dot { background: #34d399; }
+
+  /* Selector de vía de compra (Stripe / Transferencia) */
+  .via-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .via-toggle button {
+    padding: 0.7rem 1rem; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+    color: var(--text-muted); font-family: inherit; font-size: 0.95rem; font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .via-toggle button:hover { border-color: var(--btn-color); color: #fff; }
+  .via-toggle button.selected {
+    border-color: var(--btn-color); background: rgba(53,168,224,0.15); color: #fff;
+  }
+
+  /* Pestañas de idioma para los datos de facturación */
+  .idioma-tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
+  .idioma-tabs button {
+    padding: 0.6rem 0.5rem; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: rgba(255,255,255,0.04);
+    color: var(--text-muted); font-family: inherit; font-size: 0.9rem; font-weight: 600;
+    transition: all 0.15s ease;
+  }
+  .idioma-tabs button:hover { border-color: var(--btn-color); color: #fff; }
+  .idioma-tabs button.selected {
+    border-color: var(--btn-color); background: rgba(53,168,224,0.15); color: #fff;
+  }
+
+  /* Bloque de datos de facturación dentro del modal */
+  .fiscal-box {
+    border: 1px solid var(--border); border-radius: 12px;
+    padding: 1rem; margin-bottom: 1rem; background: rgba(255,255,255,0.02);
+  }
+  .fiscal-box > h4 {
+    font-size: 0.85rem; font-weight: 600; color: #fff;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.85rem;
+  }
+
+  /* Zona de autocompletado con captura */
+  .ocr-zone {
+    border: 2px dashed rgba(53,168,224,0.5); border-radius: 12px;
+    padding: 1rem; text-align: center; cursor: pointer;
+    background: rgba(53,168,224,0.05); margin-bottom: 1rem;
+    transition: all 0.15s ease;
+  }
+  .ocr-zone:hover { border-color: var(--btn-color); background: rgba(53,168,224,0.1); }
+  .ocr-zone .ocr-title { font-weight: 600; color: #fff; font-size: 0.9rem; }
+  .ocr-zone .ocr-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+  .ocr-zone.processing { pointer-events: none; opacity: 0.7; }
+  .ocr-spinner {
+    display: inline-block; width: 16px; height: 16px; vertical-align: -3px; margin-right: 0.4rem;
+    border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ocr-preview {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.6rem 0.85rem; border: 1px solid var(--border); border-radius: 10px;
+    background: rgba(255,255,255,0.04); margin-bottom: 1rem;
+  }
+  .ocr-preview img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+  .ocr-preview .ocr-file-name { font-size: 0.85rem; color: #fff; word-break: break-all; }
+  .ocr-preview .ocr-file-status { font-size: 0.75rem; color: #34d399; }
+  .ocr-preview button {
+    margin-left: auto; background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 1rem; padding: 0.25rem 0.5rem; border-radius: 6px;
+  }
+  .ocr-preview button:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+  /* ============================================================
      RESPONSIVE — tablet y móvil
   ============================================================ */
   @media (max-width: 768px) {
@@ -686,9 +759,10 @@
     <h1>Plataforma de Facturas</h1>
   </div>
   <div class="nav-links">
-    <button class="nav-link" id="navDashboard" onclick="goto('dashboard')">Panel</button>
-    <button class="nav-link" id="navFacturas" onclick="goto('facturas')">Facturas</button>
-    <button class="nav-link no-jefe" id="navEstadisticas" onclick="goto('estadisticas')">Estadísticas</button>
+    <button class="nav-link no-comercial" id="navDashboard" onclick="goto('dashboard')">Panel</button>
+    <button class="nav-link no-comercial" id="navFacturas" onclick="goto('facturas')">Facturas</button>
+    <button class="nav-link no-jefe no-comercial" id="navEstadisticas" onclick="goto('estadisticas')">Estadísticas</button>
+    <button class="nav-link solicitudes-nav" id="navSolicitudes" onclick="goto('solicitudes')">Solicitudes</button>
     <div class="user-pill">
       <div class="user-info">
         <div class="user-name" id="userName">—</div>
@@ -969,6 +1043,63 @@
     </div>
   </section>
 
+  <!-- SOLICITUDES DE FACTURA -->
+  <section id="screen-solicitudes" class="container hidden">
+    <div class="toolbar">
+      <div>
+        <h1>Solicitud de facturas</h1>
+        <p id="solicitudesSubtitle">Pide el cambio de datos de facturación de un cliente</p>
+      </div>
+      <button class="btn btn-inline" onclick="openModalSolicitud()">+ Nueva solicitud</button>
+    </div>
+    <div class="grid-stats" style="grid-template-columns: 1fr 1fr;">
+      <button class="stat-card pendiente" onclick="filterSolTo('Pendiente')">
+        <div class="stat-label">Pendientes</div>
+        <div class="stat-value" id="statSolPend">0</div>
+        <div class="stat-meta">esperando facturación</div>
+      </button>
+      <button class="stat-card revisada" onclick="filterSolTo('Facturada')">
+        <div class="stat-label">Facturadas</div>
+        <div class="stat-value" id="statSolFact">0</div>
+        <div class="stat-meta">completadas</div>
+      </button>
+    </div>
+    <div class="filters-bar">
+      <div class="filter-group">
+        <label>Estado:</label>
+        <select id="filterSolEstado" onchange="renderSolicitudes()">
+          <option value="Todos">Todos</option>
+          <option>Pendiente</option>
+          <option>Facturada</option>
+        </select>
+      </div>
+      <div class="filter-group admin-only">
+        <label>Comercial:</label>
+        <select id="filterSolComercial" onchange="renderSolicitudes()">
+          <option value="Todos">Todos</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Estado</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th>Producto</th>
+              <th>Vía</th>
+              <th style="text-align:right;">Importe</th>
+              <th class="admin-only">Comercial</th>
+            </tr>
+          </thead>
+          <tbody id="solicitudesList"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <!-- MODAL DE CONFIRMACIÓN (genérico) -->
@@ -1042,6 +1173,127 @@
   </div>
 </div>
 
+<!-- MODAL NUEVA SOLICITUD DE FACTURA -->
+<div id="modalSolicitud" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 560px;">
+    <div class="modal-header">
+      <h3>Nueva solicitud de factura</h3>
+      <button class="modal-close" onclick="closeModalSolicitud()">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="solForm" onsubmit="event.preventDefault(); submitSolicitud();">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre cliente *</label>
+            <input type="text" id="solCliente" class="form-control" placeholder="Ej: Juan Pérez" required>
+          </div>
+          <div class="form-group">
+            <label>Email cliente *</label>
+            <input type="email" id="solEmail" class="form-control" placeholder="cliente@email.com" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Producto / servicio comprado *</label>
+            <input type="text" id="solProducto" class="form-control" placeholder="Ej: Curso Smart Aligner" required>
+          </div>
+          <div class="form-group">
+            <label>Importe producto (€) *</label>
+            <input type="number" id="solImporte" step="0.01" min="0" class="form-control" placeholder="0,00" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Vía de compra *</label>
+          <div class="via-toggle">
+            <button type="button" id="viaStripe" onclick="setVia('stripe')">💳 Stripe</button>
+            <button type="button" id="viaTransferencia" onclick="setVia('transferencia')">🏦 Transferencia</button>
+          </div>
+        </div>
+
+        <div class="fiscal-box">
+          <h4>Datos de facturación</h4>
+
+          <div class="idioma-tabs">
+            <button type="button" id="tabEs" onclick="setIdioma('es')">🇪🇸 Español</button>
+            <button type="button" id="tabEn" onclick="setIdioma('en')">🇬🇧 English</button>
+            <button type="button" id="tabIt" onclick="setIdioma('it')">🇮🇹 Italiano</button>
+          </div>
+
+          <!-- Autocompletar con captura -->
+          <input type="file" id="capturaPicker" accept="image/*" style="display:none" onchange="handleCapturaPick(event)">
+          <div class="ocr-zone" id="ocrZone" onclick="document.getElementById('capturaPicker').click()">
+            <div class="ocr-title" id="ocrTitle">📸 Subir captura de WhatsApp con los datos fiscales</div>
+            <div class="ocr-hint">Los campos se rellenarán solos leyendo la imagen · también puedes escribirlos a mano abajo</div>
+          </div>
+          <div class="ocr-preview hidden" id="ocrPreview">
+            <img id="ocrThumb" alt="captura">
+            <div>
+              <div class="ocr-file-name" id="ocrFileName">captura.jpg</div>
+              <div class="ocr-file-status" id="ocrFileStatus">✓ Datos extraídos — revísalos antes de enviar</div>
+            </div>
+            <button type="button" onclick="clearCaptura()" title="Quitar captura">✕</button>
+          </div>
+
+          <div class="form-group">
+            <label id="lblNif">NIF / CIF *</label>
+            <input type="text" id="solNif" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label id="lblNombreFiscal">Nombre empresa *</label>
+            <input type="text" id="solNombreFiscal" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Dirección *</label>
+            <input type="text" id="solDireccion" class="form-control" placeholder="Calle y número" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lblCp">Código postal *</label>
+              <input type="text" id="solCp" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label>Provincia *</label>
+              <input type="text" id="solProvincia" class="form-control" required>
+            </div>
+          </div>
+          <div class="form-group hidden" id="grupoPais">
+            <label>País *</label>
+            <input type="text" id="solPais" class="form-control">
+          </div>
+          <div class="form-group hidden" id="grupoCodice">
+            <label>Codice univoco *</label>
+            <input type="text" id="solCodice" class="form-control" placeholder="Ej: M5UXCR1">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Notas para facturación (opcional)</label>
+          <textarea id="solNotas" class="form-control" rows="2" placeholder="Aclaraciones para Ángel…"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" style="margin-top:0;" onclick="closeModalSolicitud()">Cancelar</button>
+          <button type="submit" class="btn" id="btnGuardarSolicitud">Enviar solicitud</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE DE SOLICITUD -->
+<div id="modalSolDetalle" class="modal-overlay hidden">
+  <div class="modal" style="max-width: 560px;">
+    <div class="modal-header">
+      <h3>Detalle de la solicitud</h3>
+      <button class="modal-close" onclick="closeSolDetalle()">✕</button>
+    </div>
+    <div class="modal-body" id="solDetalleBody"></div>
+  </div>
+</div>
+
 <script>
   // ============================================================
   // CONFIGURACIÓN DE SUPABASE
@@ -1057,6 +1309,12 @@
   // ============================================================
   const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const PAGO_LABELS = { cuenta_corriente: 'Cuenta corriente', tarjeta: 'Tarjeta', amex: 'AMEX' };
+  const VIA_LABELS = { stripe: '💳 Stripe', transferencia: '🏦 Transferencia' };
+  const IDIOMA_META = {
+    es: { bandera: '🇪🇸', nombre: 'Español',  nif: 'NIF / CIF',    nombreFiscal: 'Nombre empresa',                  cp: 'Código postal' },
+    en: { bandera: '🇬🇧', nombre: 'English',  nif: 'VAT Number',   nombreFiscal: 'Empresa / persona física',        cp: 'Código postal' },
+    it: { bandera: '🇮🇹', nombre: 'Italiano', nif: 'Partita IVA',  nombreFiscal: 'Empresa / persona física',        cp: 'Código postal (CAP)' }
+  };
 
   // ============================================================
   // ESTADO
@@ -1070,6 +1328,14 @@
   let historialByFactura = {};
   let realtimeChannel = null;
   let expandedKeys = null;
+
+  // Estado del módulo de solicitudes
+  let solicitudes = [];
+  let solVia = null;          // 'stripe' | 'transferencia'
+  let solIdioma = 'es';       // 'es' | 'en' | 'it'
+  let capturaBlob = null;     // imagen redimensionada lista para subir
+  let capturaDataUrl = null;  // miniatura para previsualizar
+  let currentSolicitudId = null;
 
   // ============================================================
   // UTILIDADES
@@ -1106,7 +1372,11 @@
     if (rol === 'admin')      return 'Administrador';
     if (rol === 'jefe')       return 'Jefe';
     if (rol === 'supervisor') return 'Supervisor';
+    if (rol === 'comercial')  return 'Comercial';
     return '—';
+  }
+  function usaSolicitudes() {
+    return currentProfile?.rol === 'admin' || currentProfile?.rol === 'comercial';
   }
 
   // ============================================================
@@ -1141,6 +1411,8 @@
     currentSession = null;
     currentProfile = null;
     facturas = [];
+    solicitudes = [];
+    currentSolicitudId = null;
     messagesByFactura = {};
     historialByFactura = {};
     if (realtimeChannel) {
@@ -1196,10 +1468,12 @@
     }
     currentProfile = profile;
     applyProfile();
-    await loadFacturas();
+    const esComercial = profile.rol === 'comercial';
+    if (!esComercial) await loadFacturas();
+    if (usaSolicitudes()) await loadSolicitudes();
     setupRealtime();
     document.getElementById('loadingScreen').classList.add('hidden');
-    goto('dashboard');
+    goto(esComercial ? 'solicitudes' : 'dashboard');
     document.getElementById('btnLogin').disabled = false;
     document.getElementById('btnLogin').textContent = 'Ingresar';
   }
@@ -1240,6 +1514,18 @@
       else el.classList.remove('hidden-by-role');
     });
 
+    // Los comerciales solo ven la sección de Solicitudes
+    document.querySelectorAll('.no-comercial').forEach(el => {
+      if (currentProfile.rol === 'comercial') el.classList.add('hidden-by-role');
+      else el.classList.remove('hidden-by-role');
+    });
+
+    // La pestaña Solicitudes solo la ven admin y comerciales
+    document.querySelectorAll('.solicitudes-nav').forEach(el => {
+      if (usaSolicitudes()) el.classList.remove('hidden-by-role');
+      else el.classList.add('hidden-by-role');
+    });
+
     document.getElementById('dashTitle').textContent = `Hola, ${firstName(currentProfile.nombre)}`;
 
     if (currentProfile.rol === 'admin') {
@@ -1249,8 +1535,8 @@
       document.getElementById('dashSubtitle').textContent = '';
       document.getElementById('heroJefe').classList.remove('hidden');
     } else {
-      // supervisor
-      document.getElementById('dashSubtitle').textContent = 'Vista de supervisión · solo lectura';
+      // supervisor / comercial
+      document.getElementById('dashSubtitle').textContent = currentProfile.rol === 'supervisor' ? 'Vista de supervisión · solo lectura' : '';
       document.getElementById('heroJefe').classList.add('hidden');
     }
   }
@@ -1349,6 +1635,9 @@
         const fid = payload.new?.factura_id || payload.old?.factura_id;
         if (fid) await loadHistorial(fid);
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'solicitudes' }, async () => {
+        if (usaSolicitudes()) await loadSolicitudes();
+      })
       .subscribe();
   }
 
@@ -1356,7 +1645,7 @@
   // NAVEGACIÓN
   // ============================================================
   function goto(screen) {
-    ['login','dashboard','facturas','detalle','estadisticas'].forEach(s => {
+    ['login','dashboard','facturas','detalle','estadisticas','solicitudes'].forEach(s => {
       document.getElementById('screen-' + s).classList.add('hidden');
     });
     if (screen === 'login') {
@@ -1368,11 +1657,13 @@
     document.getElementById('navDashboard').classList.toggle('active', screen === 'dashboard');
     document.getElementById('navFacturas').classList.toggle('active', screen === 'facturas' || screen === 'detalle');
     document.getElementById('navEstadisticas').classList.toggle('active', screen === 'estadisticas');
+    document.getElementById('navSolicitudes').classList.toggle('active', screen === 'solicitudes');
 
     if (screen === 'dashboard')    renderDashboard();
     if (screen === 'facturas')     renderFacturas();
     if (screen === 'detalle')      openDetalleScreen();
     if (screen === 'estadisticas') renderEstadisticas();
+    if (screen === 'solicitudes') { renderSolicitudes(); loadSolicitudes(); }
 
     window.scrollTo(0, 0);
   }
@@ -2065,6 +2356,378 @@
         }
       });
     });
+  }
+
+  // ============================================================
+  // SOLICITUDES DE FACTURA
+  // ============================================================
+  async function loadSolicitudes() {
+    if (!usaSolicitudes()) return;
+    const { data, error } = await sb
+      .from('solicitudes')
+      .select('*, profile:profiles!creada_por(nombre)')
+      .order('fecha_creacion', { ascending: false });
+    if (error) {
+      console.error(error);
+      showToast('Error al cargar solicitudes: ' + error.message, 'error');
+      return;
+    }
+    solicitudes = data || [];
+    renderSolicitudes();
+  }
+
+  function renderSolicitudes() {
+    const tbody = document.getElementById('solicitudesList');
+    if (!tbody || !usaSolicitudes()) return;
+    const esAdmin = currentProfile?.rol === 'admin';
+
+    // Contadores
+    const pend = solicitudes.filter(s => s.estado === 'Pendiente').length;
+    const fact = solicitudes.filter(s => s.estado === 'Facturada').length;
+    document.getElementById('statSolPend').textContent = pend;
+    document.getElementById('statSolFact').textContent = fact;
+    document.getElementById('solicitudesSubtitle').textContent = esAdmin
+      ? `${solicitudes.length} solicitud${pluralize(solicitudes.length, '', 'es')} en total`
+      : 'Pide el cambio de datos de facturación de un cliente';
+
+    // Desplegable de comerciales (solo admin)
+    if (esAdmin) {
+      const sel = document.getElementById('filterSolComercial');
+      const actual = sel.value;
+      const nombres = [...new Set(solicitudes.map(s => s.profile?.nombre).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="Todos">Todos</option>' +
+        nombres.map(n => `<option>${escapeHtml(n)}</option>`).join('');
+      if ([...sel.options].some(o => o.value === actual)) sel.value = actual;
+    }
+
+    // Filtros
+    const fEstado = document.getElementById('filterSolEstado').value;
+    const fComercial = esAdmin ? document.getElementById('filterSolComercial').value : 'Todos';
+    const filtradas = solicitudes.filter(s => {
+      if (fEstado !== 'Todos' && s.estado !== fEstado) return false;
+      if (fComercial !== 'Todos' && s.profile?.nombre !== fComercial) return false;
+      return true;
+    });
+
+    if (filtradas.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${solicitudes.length === 0 ? 'Aún no hay solicitudes. Crea la primera con "+ Nueva solicitud".' : 'Ninguna solicitud coincide con los filtros.'}</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = filtradas.map(s => `
+      <tr onclick="openSolDetalle('${s.id}')">
+        <td><span class="status-badge status-${s.estado.toLowerCase()}"><span class="dot"></span>${s.estado}</span></td>
+        <td>${formatDate(s.fecha_creacion)}</td>
+        <td><strong>${escapeHtml(s.nombre_cliente)}</strong><br><span style="font-size:0.75rem; color:var(--text-muted);">${IDIOMA_META[s.idioma_fiscal]?.bandera || ''} ${escapeHtml(s.nombre_fiscal)}</span></td>
+        <td>${escapeHtml(s.producto)}</td>
+        <td>${VIA_LABELS[s.via_compra] || '—'}</td>
+        <td style="text-align:right; font-weight:700;">${formatMoney(parseFloat(s.importe))}</td>
+        ${esAdmin ? `<td>${escapeHtml(firstName(s.profile?.nombre || '—'))}</td>` : ''}
+      </tr>
+    `).join('');
+  }
+
+  function filterSolTo(estado) {
+    document.getElementById('filterSolEstado').value = estado;
+    renderSolicitudes();
+  }
+
+  // ── Modal de nueva solicitud ─────────────────────────────────
+  function openModalSolicitud() {
+    document.getElementById('solForm').reset();
+    solVia = null;
+    clearCaptura();
+    document.getElementById('viaStripe').classList.remove('selected');
+    document.getElementById('viaTransferencia').classList.remove('selected');
+    setIdioma('es');
+    document.getElementById('modalSolicitud').classList.remove('hidden');
+  }
+
+  function closeModalSolicitud() {
+    document.getElementById('modalSolicitud').classList.add('hidden');
+    document.getElementById('solForm').reset();
+    clearCaptura();
+  }
+
+  function setVia(via) {
+    solVia = via;
+    document.getElementById('viaStripe').classList.toggle('selected', via === 'stripe');
+    document.getElementById('viaTransferencia').classList.toggle('selected', via === 'transferencia');
+  }
+
+  function setIdioma(idioma) {
+    solIdioma = idioma;
+    document.getElementById('tabEs').classList.toggle('selected', idioma === 'es');
+    document.getElementById('tabEn').classList.toggle('selected', idioma === 'en');
+    document.getElementById('tabIt').classList.toggle('selected', idioma === 'it');
+
+    const meta = IDIOMA_META[idioma];
+    document.getElementById('lblNif').textContent = meta.nif + ' *';
+    document.getElementById('lblNombreFiscal').textContent = meta.nombreFiscal + ' *';
+    document.getElementById('lblCp').textContent = meta.cp + ' *';
+
+    // País solo en inglés · Codice univoco solo en italiano
+    document.getElementById('grupoPais').classList.toggle('hidden', idioma !== 'en');
+    document.getElementById('solPais').required = (idioma === 'en');
+    document.getElementById('grupoCodice').classList.toggle('hidden', idioma !== 'it');
+    document.getElementById('solCodice').required = (idioma === 'it');
+  }
+
+  // ── Captura de WhatsApp + autocompletado con IA ──────────────
+  function resizeImage(file, maxDim = 1600) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(img.src);
+        canvas.toBlob(b => b ? resolve({ blob: b, dataUrl: canvas.toDataURL('image/jpeg', 0.85) }) : reject(new Error('No se pudo procesar la imagen')), 'image/jpeg', 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(img.src); reject(new Error('La imagen no es válida')); };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  async function handleCapturaPick(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('La imagen es demasiado grande. Máximo 10 MB.', 'error');
+      event.target.value = '';
+      return;
+    }
+
+    const zone = document.getElementById('ocrZone');
+    const title = document.getElementById('ocrTitle');
+    zone.classList.add('processing');
+    title.innerHTML = '<span class="ocr-spinner"></span>Leyendo la captura…';
+
+    try {
+      const { blob, dataUrl } = await resizeImage(file);
+      capturaBlob = blob;
+      capturaDataUrl = dataUrl;
+
+      const base64 = dataUrl.split(',')[1];
+      const resp = await fetch('/api/extraer-datos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + currentSession.access_token
+        },
+        body: JSON.stringify({ image: base64, mediaType: 'image/jpeg', idioma: solIdioma })
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'No se pudo leer la captura');
+      }
+      const { datos } = await resp.json();
+
+      // Rellenar campos (el usuario los revisa antes de enviar)
+      const fill = (id, valor) => { if (valor) document.getElementById(id).value = valor; };
+      fill('solNif', datos.nif);
+      fill('solNombreFiscal', datos.nombre_fiscal);
+      fill('solDireccion', datos.direccion);
+      fill('solCp', datos.codigo_postal);
+      fill('solProvincia', datos.provincia);
+      if (solIdioma === 'en') fill('solPais', datos.pais);
+      if (solIdioma === 'it') fill('solCodice', datos.codice_univoco);
+      // Cliente y email solo si aún están vacíos
+      if (!document.getElementById('solCliente').value && datos.nombre_cliente) document.getElementById('solCliente').value = datos.nombre_cliente;
+      if (!document.getElementById('solEmail').value && datos.email_cliente) document.getElementById('solEmail').value = datos.email_cliente;
+
+      // Mostrar la miniatura de la captura
+      document.getElementById('ocrThumb').src = capturaDataUrl;
+      document.getElementById('ocrFileName').textContent = file.name;
+      document.getElementById('ocrFileStatus').textContent = '✓ Datos extraídos — revísalos antes de enviar';
+      document.getElementById('ocrPreview').classList.remove('hidden');
+      zone.classList.add('hidden');
+      showToast('✓ Campos rellenados desde la captura. Revísalos antes de enviar.');
+    } catch (e) {
+      console.error(e);
+      // La captura se conserva adjunta aunque falle la lectura automática
+      if (capturaBlob) {
+        document.getElementById('ocrThumb').src = capturaDataUrl;
+        document.getElementById('ocrFileName').textContent = file.name;
+        document.getElementById('ocrFileStatus').textContent = '⚠ No se pudieron leer los datos — rellénalos a mano (la captura se adjuntará igualmente)';
+        document.getElementById('ocrPreview').classList.remove('hidden');
+        zone.classList.add('hidden');
+      }
+      showToast('No se pudo autocompletar: ' + (e.message || e), 'error');
+    } finally {
+      zone.classList.remove('processing');
+      title.textContent = '📸 Subir captura de WhatsApp con los datos fiscales';
+      event.target.value = '';
+    }
+  }
+
+  function clearCaptura() {
+    capturaBlob = null;
+    capturaDataUrl = null;
+    const picker = document.getElementById('capturaPicker');
+    if (picker) picker.value = '';
+    const prev = document.getElementById('ocrPreview');
+    if (prev) prev.classList.add('hidden');
+    const zone = document.getElementById('ocrZone');
+    if (zone) zone.classList.remove('hidden');
+  }
+
+  // ── Enviar la solicitud ──────────────────────────────────────
+  async function submitSolicitud() {
+    if (!solVia) {
+      showToast('Selecciona la vía de compra: Stripe o Transferencia.', 'error');
+      return;
+    }
+    const importe = parseFloat(document.getElementById('solImporte').value);
+    if (isNaN(importe)) return;
+
+    const btn = document.getElementById('btnGuardarSolicitud');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+
+    try {
+      // 1. Subir la captura (si hay) al bucket
+      let capturaPath = null;
+      if (capturaBlob) {
+        capturaPath = `${currentSession.user.id}/${Date.now()}-captura.jpg`;
+        const { error: upErr } = await sb.storage.from('solicitudes').upload(capturaPath, capturaBlob, { contentType: 'image/jpeg' });
+        if (upErr) throw upErr;
+      }
+
+      // 2. Guardar la solicitud
+      const { error } = await sb.from('solicitudes').insert({
+        nombre_cliente: document.getElementById('solCliente').value.trim(),
+        email_cliente:  document.getElementById('solEmail').value.trim(),
+        producto:       document.getElementById('solProducto').value.trim(),
+        via_compra:     solVia,
+        importe:        importe,
+        idioma_fiscal:  solIdioma,
+        nif:            document.getElementById('solNif').value.trim(),
+        nombre_fiscal:  document.getElementById('solNombreFiscal').value.trim(),
+        direccion:      document.getElementById('solDireccion').value.trim(),
+        codigo_postal:  document.getElementById('solCp').value.trim(),
+        provincia:      document.getElementById('solProvincia').value.trim(),
+        pais:           solIdioma === 'en' ? document.getElementById('solPais').value.trim() : null,
+        codice_univoco: solIdioma === 'it' ? document.getElementById('solCodice').value.trim() : null,
+        captura_path:   capturaPath,
+        notas:          document.getElementById('solNotas').value.trim() || null,
+        creada_por:     currentSession.user.id
+      });
+      if (error) throw error;
+
+      closeModalSolicitud();
+      showToast('✓ Solicitud enviada correctamente');
+      await loadSolicitudes();
+    } catch (e) {
+      console.error(e);
+      showToast('Error al enviar: ' + (e.message || e), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar solicitud';
+    }
+  }
+
+  // ── Detalle de una solicitud ─────────────────────────────────
+  function getSolicitud(id) { return solicitudes.find(s => s.id === id); }
+
+  function openSolDetalle(id) {
+    currentSolicitudId = id;
+    const s = getSolicitud(id);
+    if (!s) return;
+    const esAdmin = currentProfile?.rol === 'admin';
+    const meta = IDIOMA_META[s.idioma_fiscal] || IDIOMA_META.es;
+
+    const filaExtra =
+      (s.idioma_fiscal === 'en' ? `<div class="info-item"><div class="info-label">País</div><div class="info-value">${escapeHtml(s.pais || '—')}</div></div>` : '') +
+      (s.idioma_fiscal === 'it' ? `<div class="info-item"><div class="info-label">Codice univoco</div><div class="info-value">${escapeHtml(s.codice_univoco || '—')}</div></div>` : '');
+
+    const acciones = [];
+    if (s.captura_path) acciones.push(`<button class="btn btn-secondary btn-inline" style="margin-top:0;" onclick="viewCaptura()">📸 Ver captura</button>`);
+    if (esAdmin && s.estado === 'Pendiente') acciones.push(`<button class="btn btn-success btn-inline" style="margin-top:0;" onclick="markSolFacturada()">✓ Marcar como Facturada</button>`);
+    if (esAdmin || (s.creada_por === currentSession?.user?.id && s.estado === 'Pendiente')) {
+      acciones.push(`<button class="btn btn-danger btn-inline" style="margin-top:0;" onclick="deleteSolicitud()">Eliminar</button>`);
+    }
+
+    document.getElementById('solDetalleBody').innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+        <span class="status-badge status-${s.estado.toLowerCase()}"><span class="dot"></span>${s.estado}</span>
+        <span style="font-size:0.8rem; color:var(--text-muted);">${formatTime(s.fecha_creacion)} · ${escapeHtml(firstName(s.profile?.nombre || ''))}</span>
+      </div>
+      <div class="info-grid" style="margin-bottom:1rem;">
+        <div class="info-item"><div class="info-label">Cliente</div><div class="info-value">${escapeHtml(s.nombre_cliente)}</div></div>
+        <div class="info-item"><div class="info-label">Email</div><div class="info-value" style="word-break:break-all;">${escapeHtml(s.email_cliente)}</div></div>
+        <div class="info-item"><div class="info-label">Producto</div><div class="info-value">${escapeHtml(s.producto)}</div></div>
+        <div class="info-item"><div class="info-label">Importe · Vía</div><div class="info-value">${formatMoney(parseFloat(s.importe))} · ${VIA_LABELS[s.via_compra] || '—'}</div></div>
+      </div>
+      <div class="fiscal-box">
+        <h4>${meta.bandera} Datos de facturación (${meta.nombre})</h4>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">${meta.nif}</div><div class="info-value">${escapeHtml(s.nif)}</div></div>
+          <div class="info-item"><div class="info-label">${meta.nombreFiscal}</div><div class="info-value">${escapeHtml(s.nombre_fiscal)}</div></div>
+          <div class="info-item"><div class="info-label">Dirección</div><div class="info-value">${escapeHtml(s.direccion)}</div></div>
+          <div class="info-item"><div class="info-label">${meta.cp} · Provincia</div><div class="info-value">${escapeHtml(s.codigo_postal)} · ${escapeHtml(s.provincia)}</div></div>
+          ${filaExtra}
+        </div>
+      </div>
+      ${s.notas ? `<div class="fiscal-box"><h4>Notas</h4><div style="font-size:0.9rem; color:var(--text-muted);">${escapeHtml(s.notas)}</div></div>` : ''}
+      ${s.fecha_facturada ? `<p style="font-size:0.8rem; color:#34d399; margin-bottom:1rem;">✓ Facturada el ${formatTime(s.fecha_facturada)}</p>` : ''}
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:flex-end;">${acciones.join('')}</div>
+    `;
+    document.getElementById('modalSolDetalle').classList.remove('hidden');
+  }
+
+  function closeSolDetalle() {
+    document.getElementById('modalSolDetalle').classList.add('hidden');
+    currentSolicitudId = null;
+  }
+
+  async function viewCaptura() {
+    const s = getSolicitud(currentSolicitudId);
+    if (!s || !s.captura_path) return;
+    const { data, error } = await sb.storage.from('solicitudes').createSignedUrl(s.captura_path, 60 * 60);
+    if (error) {
+      showToast('Error al abrir la captura: ' + error.message, 'error');
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
+  }
+
+  async function markSolFacturada() {
+    if (!currentSolicitudId) return;
+    const { error } = await sb.from('solicitudes')
+      .update({ estado: 'Facturada', fecha_facturada: new Date().toISOString() })
+      .eq('id', currentSolicitudId);
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      return;
+    }
+    closeSolDetalle();
+    showToast('✓ Solicitud marcada como Facturada');
+    await loadSolicitudes();
+  }
+
+  async function deleteSolicitud() {
+    const s = getSolicitud(currentSolicitudId);
+    if (!s) return;
+    const ok = await showConfirm({
+      title: 'Eliminar solicitud',
+      message: `Vas a eliminar la solicitud de "${s.nombre_cliente}". Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar solicitud'
+    });
+    if (!ok) return;
+    if (s.captura_path && currentProfile?.rol === 'admin') {
+      await sb.storage.from('solicitudes').remove([s.captura_path]);
+    }
+    const { error } = await sb.from('solicitudes').delete().eq('id', currentSolicitudId);
+    if (error) {
+      showToast('Error: ' + error.message, 'error');
+      return;
+    }
+    closeSolDetalle();
+    showToast('Solicitud eliminada');
+    await loadSolicitudes();
   }
 
   // ============================================================

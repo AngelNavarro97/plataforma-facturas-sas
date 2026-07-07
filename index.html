@@ -529,6 +529,8 @@
     display: flex; align-items: center; justify-content: center;
     z-index: 100; padding: 1rem;
   }
+  /* El diálogo de confirmación debe quedar SIEMPRE por encima de cualquier otro modal */
+  #modalConfirm { z-index: 500; }
   .modal {
     background: rgba(41,35,92,0.95);
     border: 1px solid var(--border);
@@ -1980,14 +1982,18 @@
   async function viewFile() {
     const f = getCurrentFactura();
     if (!f || !f.archivoPath) return;
+    // Abrir la pestaña en el instante del clic para que el navegador no la bloquee
+    const win = window.open('', '_blank');
     const { data, error } = await sb.storage
       .from('facturas')
       .createSignedUrl(f.archivoPath, 60 * 60);
-    if (error) {
-      showToast('Error al abrir el archivo: ' + error.message, 'error');
+    if (error || !data?.signedUrl) {
+      if (win) win.close();
+      showToast('Error al abrir el archivo: ' + (error?.message || 'enlace no disponible'), 'error');
       return;
     }
-    window.open(data.signedUrl, '_blank');
+    if (win) win.location = data.signedUrl;
+    else window.location.href = data.signedUrl;
   }
 
   async function downloadFile() {
@@ -2712,12 +2718,16 @@
   async function viewCaptura() {
     const s = getSolicitud(currentSolicitudId);
     if (!s || !s.captura_path) return;
+    // Abrir la pestaña en el instante del clic para que el navegador no la bloquee
+    const win = window.open('', '_blank');
     const { data, error } = await sb.storage.from('solicitudes').createSignedUrl(s.captura_path, 60 * 60);
-    if (error) {
-      showToast('Error al abrir la captura: ' + error.message, 'error');
+    if (error || !data?.signedUrl) {
+      if (win) win.close();
+      showToast('Error al abrir la captura: ' + (error?.message || 'enlace no disponible'), 'error');
       return;
     }
-    window.open(data.signedUrl, '_blank');
+    if (win) win.location = data.signedUrl;
+    else window.location.href = data.signedUrl;
   }
 
   async function markSolFacturada() {

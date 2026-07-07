@@ -43,14 +43,14 @@ module.exports = async (req, res) => {
     }
 
     // ── 3. Llamar a Claude con visión
-    const prompt = `La imagen es una captura de pantalla (normalmente una conversación de WhatsApp o un email) que contiene datos de facturación de un cliente. Los datos pueden estar repartidos en varios mensajes, incompletos, sin etiquetar, con abreviaturas o en cualquier idioma. Tu trabajo es extraer TODO lo que encuentres, aunque solo sea un campo.
+    const prompt = `La imagen es una captura de pantalla (normalmente una conversación de WhatsApp o un email) que contiene datos de facturación de un cliente. Los datos suelen venir TODO SEGUIDO en un solo mensaje, sin etiquetas, sin comas, en minúsculas, con abreviaturas o en cualquier idioma. Tu trabajo es leerlo con calma, identificar qué es cada cosa y separarlo en campos, aunque solo encuentres uno.
 
 Campos a buscar:
-- nif: identificador fiscal (NIF, CIF, DNI, VAT Number, Partita IVA, tax ID… cualquier variante)
-- nombre_fiscal: nombre de la empresa o de la persona física a cuyo nombre va la factura
-- direccion: calle y número (SIN código postal, ciudad ni provincia)
-- codigo_postal
-- provincia: provincia, ciudad o región (si solo aparece la ciudad, ponla aquí)
+- nif: identificador fiscal (NIF, CIF, DNI, NIE, VAT Number, Partita IVA, tax ID… cualquier variante). Formatos típicos: 8 dígitos + letra (12345678Z), letra + 8 dígitos (B12345678), 11 cifras italianas, VAT con prefijo de país.
+- nombre_fiscal: nombre de la empresa o de la persona física a cuyo nombre va la factura (si solo hay un nombre de persona, va aquí)
+- direccion: calle y número (SIN código postal, ciudad ni provincia). Pistas de que algo es una calle: "calle, c/, avda, plaza, camino, bidea, kalea, via, street, rd" o un nombre propio seguido de "n1", "nº 3", "12", "2ºB"…
+- codigo_postal: 5 dígitos en España/Italia (a veces precedido de "cp" o "cap"), formatos alfanuméricos en UK/Irlanda
+- provincia: provincia, ciudad, pueblo o región (si solo aparece el pueblo/ciudad, ponlo aquí)
 - pais
 - codice_univoco: código univoco / codice destinatario SDI italiano (~7 caracteres alfanuméricos), si aparece
 - nombre_cliente: nombre de la persona de contacto, si aparece
@@ -58,11 +58,18 @@ Campos a buscar:
 
 Pista: ${PISTA_IDIOMA[idioma] || PISTA_IDIOMA.es}
 
+EJEMPLO de mensaje todo seguido y cómo separarlo:
+Texto en la imagen: "Perdón he visto ahora el mensaje Ainhara abaitua Beica 78931228N Askatasun bidea n1 forua cp 48393"
+Respuesta correcta:
+{"nif":"78931228N","nombre_fiscal":"Ainhara Abaitua Beica","direccion":"Askatasun bidea, nº 1","codigo_postal":"48393","provincia":"Forua","pais":null,"codice_univoco":null,"nombre_cliente":"Ainhara Abaitua Beica","email_cliente":null}
+Fíjate: el texto de conversación ("Perdón he visto ahora el mensaje") se ignora, el DNI se detecta por su formato, lo que va después del número de portal y antes del "cp" es el pueblo, y el nombre de persona se usa como nombre fiscal.
+
 Reglas:
 1. Responde SOLO con un objeto JSON con exactamente esas claves. Nada de texto antes o después, nada de bloques de código.
 2. Si un campo no aparece, pon null. NUNCA digas que no puedes leer la imagen: devuelve el JSON con lo que haya (aunque todo sea null).
-3. Copia los valores tal y como aparecen, corrigiendo solo errores obvios de tecleo/OCR.
-4. No inventes ningún dato.`;
+3. Intenta SIEMPRE asignar cada trozo del mensaje a algún campo; deja algo en null solo si de verdad no está en la imagen.
+4. Copia los valores tal y como aparecen, corrigiendo solo mayúsculas y errores obvios de tecleo/OCR.
+5. No inventes ningún dato que no esté en la imagen.`;
 
     const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -72,8 +79,9 @@ Reglas:
         'content-type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: 'claude-sonnet-5',
         max_tokens: 1024,
+        temperature: 0,
         messages: [
           {
             role: 'user',
